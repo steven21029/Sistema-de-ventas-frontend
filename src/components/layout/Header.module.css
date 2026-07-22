@@ -1,0 +1,144 @@
+.header {
+  display: grid;
+  grid-template-columns: minmax(320px, 380px) minmax(340px, 1fr) auto;
+  align-items: center;
+  gap: 28px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  color: var(--color-blue);
+}
+
+.logo {
+  display: block;
+  width: clamp(390px, 29vw, 460px);
+  max-width: 100%;
+  height: 146px;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.squareCanvasLogo {
+  width: clamp(280px, 31vw, 350px);
+  height: 150px;
+  object-fit: cover;
+  object-position: center center;
+}
+
+.textBrand strong {
+  display: block;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 40px;
+  font-weight: 500;
+  line-height: 0.92;
+  letter-spacing: 0;
+}
+
+.textBrand small {
+  display: block;
+  margin-top: 6px;
+  color: var(--color-muted);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+}
+
+.searchBox {
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 22px;
+  border: 1.5px solid var(--color-blue);
+  border-radius: 999px;
+  color: var(--color-blue);
+}
+
+.searchBox input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  color: var(--color-ink);
+  background: transparent;
+}
+
+.searchBox input::placeholder {
+  color: #737b8f;
+}
+
+.quickActions {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  color: var(--color-blue);
+}
+
+.iconTextButton,
+.cartButton {
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.iconTextButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.cartButton {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+}
+
+.cartBadge {
+  position: absolute;
+  top: 1px;
+  right: 0;
+  min-width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--color-red-dark);
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+@media (max-width: 1080px) {
+  .header {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .quickActions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 720px) {
+  .logo {
+    width: clamp(280px, 82vw, 370px);
+    height: 112px;
+  }
+
+  .squareCanvasLogo {
+    width: clamp(280px, 82vw, 360px);
+    height: 118px;
+  }
+
+  .textBrand strong {
+    font-size: 34px;
+  }
+}

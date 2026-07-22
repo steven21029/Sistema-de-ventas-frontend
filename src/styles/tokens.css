@@ -1,0 +1,21 @@
+:root {
+  --color-ink: #000000;
+  --color-muted: #6e6f70;
+  --color-surface: #ffffff;
+  --color-surface-soft: #f6f8fb;
+  --color-line: #e5e8ee;
+  --color-red-dark: #d1393d;
+  --color-red-light: #e94a51;
+  --color-blue: #2d4b77;
+  --shadow-soft: 0 18px 55px rgba(45, 75, 119, 0.12);
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --page-max: 1440px;
+  font-family:
+    "Segoe UI",
+    "Aptos",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+}
