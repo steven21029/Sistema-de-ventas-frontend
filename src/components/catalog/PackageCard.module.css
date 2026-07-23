@@ -1,0 +1,146 @@
+.card {
+  display: grid;
+  grid-template-columns: minmax(180px, 38%) minmax(0, 1fr);
+  min-height: 260px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  overflow: hidden;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.card:hover {
+  border-color: rgba(45, 75, 119, 0.22);
+  box-shadow: var(--shadow-soft);
+  transform: translateY(-2px);
+}
+
+.media {
+  position: relative;
+  min-height: 260px;
+  background: var(--color-surface-soft);
+}
+
+.media img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.placeholder {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: rgba(45, 75, 119, 0.72);
+}
+
+.media span {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  color: white;
+  background: var(--color-red-dark);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.body {
+  display: grid;
+  align-content: start;
+  padding: 24px;
+}
+
+.body > p:first-child {
+  margin: 0 0 8px;
+  color: var(--color-red-dark);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.body h3 {
+  margin: 0;
+  color: var(--color-blue);
+  font-size: 24px;
+  line-height: 1.12;
+  letter-spacing: 0;
+}
+
+.description {
+  margin: 12px 0 0;
+  color: var(--color-muted);
+  line-height: 1.5;
+}
+
+.products {
+  display: grid;
+  gap: 6px;
+  margin: 16px 0 0;
+  padding: 0 0 0 18px;
+  color: var(--color-muted);
+}
+
+.products li::marker {
+  color: var(--color-red-dark);
+}
+
+.footer {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: auto;
+  padding-top: 18px;
+  border-top: 1px solid var(--color-line);
+}
+
+.footer small {
+  display: block;
+  color: var(--color-muted);
+  font-weight: 800;
+  text-decoration: line-through;
+}
+
+.footer strong {
+  display: block;
+  color: var(--color-red-dark);
+  font-size: 22px;
+}
+
+.footer button {
+  min-width: 112px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-red-dark);
+  color: white;
+  font-weight: 800;
+}
+
+.footer button:disabled {
+  cursor: not-allowed;
+  background: #a8adb7;
+}
+
+@media (max-width: 680px) {
+  .card {
+    grid-template-columns: 1fr;
+  }
+
+  .media {
+    min-height: 210px;
+  }
+}

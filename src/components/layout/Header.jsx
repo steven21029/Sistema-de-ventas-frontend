@@ -13,13 +13,18 @@ function Header({
   searchValue,
 }) {
   const logoUrl = resolveMediaUrl(empresa?.logo);
-  const [logoShape, setLogoShape] = useState("squareCanvas");
-  const brandName = empresa?.nombre || "Analiza Laboratorios Clinicos";
+  const [logoShape, setLogoShape] = useState("wide");
+  const [hasLogoError, setHasLogoError] = useState(false);
+  const brandName = empresa?.nombre || "Tu logo aqui";
   const brandParts = brandName.trim().split(/\s+/);
-  const primaryName = brandParts[0] || "Analiza";
-  const secondaryName = brandParts.slice(1).join(" ") || empresa?.slug || "Tienda en linea";
+  const primaryName = empresa?.nombre ? brandParts[0] : "Tu logo";
+  const secondaryName = empresa?.nombre
+    ? brandParts.slice(1).join(" ") || empresa?.slug || "Tienda en linea"
+    : "aqui";
 
   useEffect(() => {
+    setHasLogoError(false);
+
     if (!logoUrl) {
       return undefined;
     }
@@ -38,6 +43,7 @@ function Header({
 
     image.onerror = () => {
       if (isActive) {
+        setHasLogoError(true);
         setLogoShape("wide");
       }
     };
@@ -63,7 +69,7 @@ function Header({
   return (
     <header className={styles.header} aria-label="Encabezado principal">
       <a className={styles.brand} href="/" aria-label={brandName} onClick={handleBrandClick}>
-        {logoUrl ? (
+        {logoUrl && !hasLogoError ? (
           <img
             className={`${styles.logo} ${
               logoShape === "squareCanvas" ? styles.squareCanvasLogo : ""
@@ -89,7 +95,7 @@ function Header({
           type="search"
           value={searchValue}
           onChange={(event) => onSearchChange(event.target.value)}
-          placeholder="Buscar examenes, perfiles o servicios"
+          placeholder="Buscar productos o servicios"
         />
       </form>
 

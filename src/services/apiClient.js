@@ -48,6 +48,30 @@ export async function apiGet(path, params, options = {}) {
   return payload;
 }
 
+export async function apiPost(path, body = {}, options = {}) {
+  const response = await fetch(buildUrl(path), {
+    method: "POST",
+    cache: "no-store",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+    body: JSON.stringify(body),
+  });
+
+  const contentType = response.headers.get("content-type") || "";
+  const payload = contentType.includes("application/json")
+    ? await response.json()
+    : await response.text();
+
+  if (!response.ok) {
+    throw new ApiError("No se pudo guardar la informacion solicitada.", response.status, payload);
+  }
+
+  return payload;
+}
+
 export function asArray(payload) {
   if (Array.isArray(payload)) {
     return payload;

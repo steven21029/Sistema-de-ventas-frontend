@@ -1,19 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import CartDrawer from "../components/cart/CartDrawer";
 import MenuPage from "../components/content/MenuPage";
-import CategoryStrip from "../components/catalog/CategoryStrip";
-import FeaturedProducts from "../components/catalog/FeaturedProducts";
-import HeroPromo from "../components/catalog/HeroPromo";
 import Header from "../components/layout/Header";
 import MainNav from "../components/layout/MainNav";
-import { getCategorias, getFamilias, getProductos } from "../services/catalogoService";
+import { DEMO_BANNERS, DEMO_EMPRESA } from "../config/demoContent";
 import { getEmpresaActual } from "../services/empresaService";
 import { getBannersPromocionales } from "../services/promocionesService";
+import BranchesPage from "../pages/BranchesPage";
+import ContactPage from "../pages/ContactPage";
+import HomePage from "../pages/HomePage";
+import PackageListPage from "../pages/PackageListPage";
+import ProductListPage from "../pages/ProductListPage";
+import PromotionsPage from "../pages/PromotionsPage";
+import ServiceTypesPage from "../pages/ServiceTypesPage";
 import { findActiveMenuItem, normalizeMenuItems, normalizePath } from "../utils/menu";
 import { toNumber } from "../utils/money";
 import styles from "./App.module.css";
 
-const LOCAL_EMPRESA_SLUG = import.meta.env.VITE_EMPRESA_SLUG || "Analiza";
+const LOCAL_EMPRESA_SLUG = import.meta.env.VITE_EMPRESA_SLUG || "";
 
 function buildEmpresaTheme(empresa) {
   return {
@@ -25,25 +29,29 @@ function buildEmpresaTheme(empresa) {
   };
 }
 
+function getSellableCode(item) {
+  return item.codigo_barra || item.codigo || item.clave || item.nombre;
+}
+
+function getSellablePrice(item) {
+  return toNumber(item.precio ?? item.precio_combo ?? item.precio_perfil ?? 0);
+}
+
+function getPageKind(menuItem) {
+  return menuItem?.pageType || "inicio";
+}
+
 function App() {
   const [empresa, setEmpresa] = useState(null);
   const [empresaSlug, setEmpresaSlug] = useState("");
-  const [familias, setFamilias] = useState([]);
-  const [categorias, setCategorias] = useState([]);
-  const [productos, setProductos] = useState([]);
   const [banners, setBanners] = useState([]);
   const [searchText, setSearchText] = useState("");
-  const [filters, setFilters] = useState({
-    buscar: "",
-    categoria: "",
-    familia: "",
-    orden: "",
-  });
   const [isBootLoading, setIsBootLoading] = useState(true);
-  const [isProductsLoading, setIsProductsLoading] = useState(true);
+  const [isDemoMode, setIsDemoMode] = useState(false);
   const [error, setError] = useState("");
   const [cartOpen, setCartOpen] = useState(false);
   const [cartItems, setCartItems] = useState([]);
+  const [menuSearchText, setMenuSearchText] = useState("");
   const [currentPath, setCurrentPath] = useState(() =>
     typeof window === "undefined" ? "/" : normalizePath(window.location.pathname),
   );
@@ -54,7 +62,7 @@ function App() {
     () => findActiveMenuItem(menuItems, currentPath),
     [currentPath, menuItems],
   );
-  const isHomePage = !activeMenuItem || activeMenuItem.key === "inicio";
+  const activePageKind = useMemo(() => getPageKind(activeMenuItem), [activeMenuItem]);
   const bannersConImagen = useMemo(
     () => banners.filter((banner) => banner?.imagen_final),
     [banners],
@@ -77,32 +85,24 @@ function App() {
 
     async function loadBaseCatalog() {
       setIsBootLoading(true);
-      setIsProductsLoading(true);
       setError("");
-      setEmpresaSlug("");
-      setFamilias([]);
-      setCategorias([]);
-      setProductos([]);
-      setBanners([]);
 
       try {
         const empresaPayload = await getEmpresaActual();
         const resolvedEmpresaSlug = empresaPayload?.slug || LOCAL_EMPRESA_SLUG;
-        const [familiasPayload, categoriasPayload] = await Promise.all([
-          getFamilias(resolvedEmpresaSlug),
-          getCategorias(resolvedEmpresaSlug),
-        ]);
 
         if (isActive) {
           setEmpresa(empresaPayload);
           setEmpresaSlug(resolvedEmpresaSlug);
-          setFamilias(familiasPayload);
-          setCategorias(categoriasPayload);
+          setIsDemoMode(false);
         }
       } catch (requestError) {
         if (isActive) {
+          setEmpresa(DEMO_EMPRESA);
+          setEmpresaSlug("");
+          setBanners(DEMO_BANNERS);
+          setIsDemoMode(true);
           setError(requestError.message);
-          setIsProductsLoading(false);
         }
       } finally {
         if (isActive) {
@@ -128,15 +128,13 @@ function App() {
     let isActive = true;
 
     if (!empresaSlug) {
-      setBanners([]);
+      if (!isDemoMode) {
+        setBanners([]);
+      }
       return undefined;
     }
 
     async function loadBanners() {
-      if (isActive) {
-        setBanners([]);
-      }
-
       try {
         const bannersPayload = await getBannersPromocionales(empresaSlug);
 
@@ -167,43 +165,7 @@ function App() {
       document.removeEventListener("visibilitychange", refreshVisibleBanners);
       window.clearInterval(refreshInterval);
     };
-  }, [empresaSlug]);
-
-  useEffect(() => {
-    let isActive = true;
-
-    if (!empresaSlug) {
-      return undefined;
-    }
-
-    async function loadProducts() {
-      setIsProductsLoading(true);
-      setError("");
-
-      try {
-        const productsPayload = await getProductos(empresaSlug, filters);
-
-        if (isActive) {
-          setProductos(productsPayload);
-        }
-      } catch (requestError) {
-        if (isActive) {
-          setError(requestError.message);
-          setProductos([]);
-        }
-      } finally {
-        if (isActive) {
-          setIsProductsLoading(false);
-        }
-      }
-    }
-
-    loadProducts();
-
-    return () => {
-      isActive = false;
-    };
-  }, [empresaSlug, filters]);
+  }, [empresaSlug, isDemoMode]);
 
   const cartCount = useMemo(
     () => cartItems.reduce((total, item) => total + item.cantidad, 0),
@@ -229,36 +191,35 @@ function App() {
 
   function handleSearchSubmit(event) {
     event.preventDefault();
-    setFilters((current) => ({
-      ...current,
-      buscar: searchText.trim(),
-    }));
-  }
+    const cleanSearch = searchText.trim();
 
-  function handleSelectFamily(familia) {
-    setFilters((current) => ({
-      ...current,
-      familia,
-    }));
-  }
+    if (!cleanSearch) {
+      return;
+    }
 
-  function handleClearFilters() {
-    setSearchText("");
-    setFilters({
-      buscar: "",
-      categoria: "",
-      familia: "",
-      orden: "",
-    });
+    const productItem =
+      menuItems.find((item) => item.pageType === "productos") ||
+      menuItems.find((item) => item.key.includes("producto")) ||
+      menuItems.find((item) => item.path.includes("producto"));
+
+    setMenuSearchText(cleanSearch);
+    navigateToInternalPath(productItem?.href || "/productos");
   }
 
   function handleAddToCart(product) {
+    const productCode = getSellableCode(product);
+    const productPrice = getSellablePrice(product);
+
+    if (!productCode) {
+      return;
+    }
+
     setCartItems((current) => {
-      const existingItem = current.find((item) => item.codigo_barra === product.codigo_barra);
+      const existingItem = current.find((item) => item.codigo_barra === productCode);
 
       if (existingItem) {
         return current.map((item) =>
-          item.codigo_barra === product.codigo_barra
+          item.codigo_barra === productCode
             ? { ...item, cantidad: item.cantidad + 1 }
             : item,
         );
@@ -267,9 +228,9 @@ function App() {
       return [
         ...current,
         {
-          codigo_barra: product.codigo_barra,
+          codigo_barra: productCode,
           nombre: product.nombre,
-          precio: product.precio,
+          precio: productPrice,
           cantidad: 1,
         },
       ];
@@ -335,6 +296,53 @@ function App() {
     navigateToInternalPath(homeItem?.isExternal ? "/" : homeItem?.href || "/");
   }
 
+  function renderCurrentPage() {
+    const pageTitle = activeMenuItem?.label || "Inicio";
+
+    if (isBootLoading) {
+      return <div className={styles.loadingBox}>Cargando informacion de la empresa...</div>;
+    }
+
+    switch (activePageKind) {
+      case "productos":
+        return (
+          <ProductListPage
+            empresaSlug={empresaSlug}
+            initialSearch={menuSearchText}
+            onAddToCart={handleAddToCart}
+            title={pageTitle}
+          />
+        );
+      case "paquetes":
+        return (
+          <PackageListPage
+            empresaSlug={empresaSlug}
+            onAddToCart={handleAddToCart}
+            title={pageTitle}
+          />
+        );
+      case "servicios":
+        return <ServiceTypesPage empresaSlug={empresaSlug} title={pageTitle} />;
+      case "promociones":
+        return <PromotionsPage banners={bannersConImagen} title={pageTitle} />;
+      case "sucursales":
+        return <BranchesPage empresaSlug={empresaSlug} title={pageTitle} />;
+      case "contacto":
+        return <ContactPage empresa={empresa} empresaSlug={empresaSlug} title={pageTitle} />;
+      case "inicio":
+        return (
+          <HomePage
+            banners={bannersConImagen}
+            empresaSlug={empresaSlug}
+            isDemoMode={isDemoMode}
+            onAddToCart={handleAddToCart}
+          />
+        );
+      default:
+        return <MenuPage empresa={empresa} item={activeMenuItem} />;
+    }
+  }
+
   return (
     <div className={styles.themeRoot} style={empresaTheme}>
       <main className={styles.appShell}>
@@ -355,47 +363,13 @@ function App() {
 
         {error && (
           <div className={styles.errorBanner} role="alert">
-            {error} Verifica que el backend Django este activo en http://127.0.0.1:8000/api/.
+            {isDemoMode
+              ? "Modo de prueba activo. El backend no esta respondiendo, por eso se muestran imagenes neutrales."
+              : `${error} Verifica que el backend Django este activo en http://127.0.0.1:8000/api/.`}
           </div>
         )}
 
-        {isHomePage ? (
-          <>
-            {bannersConImagen.length > 0 && <HeroPromo banners={bannersConImagen} />}
-
-            {isBootLoading ? (
-              <div className={styles.loadingBox}>Cargando informacion de la empresa...</div>
-            ) : (
-              <CategoryStrip
-                categorias={categorias}
-                familias={familias}
-                onClear={handleClearFilters}
-                onSelectCategory={(categoria) =>
-                  setFilters((current) => ({ ...current, categoria }))
-                }
-                onSelectFamily={handleSelectFamily}
-                selectedCategory={filters.categoria}
-                selectedFamily={filters.familia}
-              />
-            )}
-
-            <FeaturedProducts
-              categorias={categorias}
-              isLoading={isProductsLoading}
-              onAddToCart={handleAddToCart}
-              onCategoryChange={(categoria) =>
-                setFilters((current) => ({ ...current, categoria }))
-              }
-              onClearFilters={handleClearFilters}
-              onSortChange={(orden) => setFilters((current) => ({ ...current, orden }))}
-              productos={productos}
-              selectedCategory={filters.categoria}
-              sortOrder={filters.orden}
-            />
-          </>
-        ) : (
-          <MenuPage empresa={empresa} item={activeMenuItem} />
-        )}
+        {renderCurrentPage()}
       </main>
 
       <CartDrawer

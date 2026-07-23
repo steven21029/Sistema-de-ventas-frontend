@@ -1,10 +1,57 @@
 const DEFAULT_MENU_ITEMS = [
   { clave: "inicio", texto: "Inicio", ruta: "/", orden: 1 },
-  { clave: "examenes", texto: "Examenes", ruta: "/examenes", orden: 2 },
-  { clave: "perfiles", texto: "Perfiles", ruta: "/perfiles", orden: 3 },
+  { clave: "productos", texto: "Productos", ruta: "/productos", orden: 2 },
+  { clave: "paquetes", texto: "Paquetes", ruta: "/paquetes", orden: 3 },
   { clave: "servicios", texto: "Servicios", ruta: "/servicios", orden: 4 },
   { clave: "promociones", texto: "Promociones", ruta: "/promociones", orden: 5 },
+  { clave: "sucursales", texto: "Sucursales", ruta: "/sucursales", orden: 6 },
+  { clave: "contacto", texto: "Contacto", ruta: "/contacto", orden: 7 },
 ];
+
+const PAGE_TYPE_ALIASES = {
+  home: "inicio",
+  inicio: "inicio",
+  portada: "inicio",
+  productos: "productos",
+  producto: "productos",
+  products: "productos",
+  product: "productos",
+  catalogo: "productos",
+  catalog: "productos",
+  articulos: "productos",
+  articulo: "productos",
+  examenes: "productos",
+  examen: "productos",
+  paquetes: "paquetes",
+  paquete: "paquetes",
+  packages: "paquetes",
+  package: "paquetes",
+  perfiles: "paquetes",
+  perfil: "paquetes",
+  combos: "paquetes",
+  combo: "paquetes",
+  servicios: "servicios",
+  servicio: "servicios",
+  services: "servicios",
+  service: "servicios",
+  categorias: "servicios",
+  categoria: "servicios",
+  familias: "servicios",
+  familia: "servicios",
+  promociones: "promociones",
+  promocion: "promociones",
+  ofertas: "promociones",
+  oferta: "promociones",
+  sucursales: "sucursales",
+  sucursal: "sucursales",
+  branches: "sucursales",
+  branch: "sucursales",
+  ubicaciones: "sucursales",
+  ubicacion: "sucursales",
+  contacto: "contacto",
+  contactenos: "contacto",
+  contact: "contacto",
+};
 
 function slugify(value) {
   return String(value || "")
@@ -38,6 +85,127 @@ function normalizeRoute(menuItem) {
   return route.startsWith("/") ? route : `/${route}`;
 }
 
+function normalizeMenuPageType(value) {
+  const normalizedValue = slugify(value);
+
+  if (PAGE_TYPE_ALIASES[normalizedValue]) {
+    return PAGE_TYPE_ALIASES[normalizedValue];
+  }
+
+  if (
+    normalizedValue.includes("product") ||
+    normalizedValue.includes("catalog") ||
+    normalizedValue.includes("producto") ||
+    normalizedValue.includes("catalogo") ||
+    normalizedValue.includes("examen")
+  ) {
+    return "productos";
+  }
+
+  if (
+    normalizedValue.includes("package") ||
+    normalizedValue.includes("paquete") ||
+    normalizedValue.includes("perfil") ||
+    normalizedValue.includes("combo")
+  ) {
+    return "paquetes";
+  }
+
+  if (normalizedValue.includes("service") || normalizedValue.includes("servicio")) {
+    return "servicios";
+  }
+
+  if (normalizedValue.includes("promo") || normalizedValue.includes("oferta")) {
+    return "promociones";
+  }
+
+  if (
+    normalizedValue.includes("branch") ||
+    normalizedValue.includes("sucursal") ||
+    normalizedValue.includes("ubicacion")
+  ) {
+    return "sucursales";
+  }
+
+  if (normalizedValue.includes("contact")) {
+    return "contacto";
+  }
+
+  return normalizedValue;
+}
+
+function inferMenuPageType(item, label, href) {
+  const explicitType =
+    item.tipo_pagina ||
+    item.page_type ||
+    item.tipo ||
+    item.plantilla ||
+    item.componente ||
+    item.seccion;
+
+  if (explicitType) {
+    return normalizeMenuPageType(explicitType);
+  }
+
+  const target = slugify(`${item.clave || ""} ${label || ""} ${href || ""}`);
+
+  if (!target || target === "/") {
+    return "inicio";
+  }
+
+  if (target.includes("inicio") || target.includes("home") || href === "/") {
+    return "inicio";
+  }
+
+  if (
+    target.includes("producto") ||
+    target.includes("product") ||
+    target.includes("catalogo") ||
+    target.includes("catalog") ||
+    target.includes("articulo") ||
+    target.includes("examen")
+  ) {
+    return "productos";
+  }
+
+  if (
+    target.includes("paquete") ||
+    target.includes("package") ||
+    target.includes("perfil") ||
+    target.includes("combo")
+  ) {
+    return "paquetes";
+  }
+
+  if (
+    target.includes("servicio") ||
+    target.includes("service") ||
+    target.includes("categoria") ||
+    target.includes("familia")
+  ) {
+    return "servicios";
+  }
+
+  if (target.includes("promocion") || target.includes("oferta")) {
+    return "promociones";
+  }
+
+  if (
+    target.includes("sucursal") ||
+    target.includes("branch") ||
+    target.includes("ubicacion") ||
+    target.includes("ubicaciones")
+  ) {
+    return "sucursales";
+  }
+
+  if (target.includes("contact")) {
+    return "contacto";
+  }
+
+  return "";
+}
+
 export function normalizeMenuItems(menu = []) {
   const sourceItems = Array.isArray(menu) && menu.length > 0 ? menu : DEFAULT_MENU_ITEMS;
 
@@ -47,14 +215,16 @@ export function normalizeMenuItems(menu = []) {
     .map((item, index) => {
       const label = item.texto || item.nombre || item.titulo || item.clave || `Pagina ${index + 1}`;
       const href = normalizeRoute(item);
-      const key = item.clave || slugify(label) || `pagina-${index + 1}`;
+      const key = slugify(item.clave || label) || `pagina-${index + 1}`;
       const isExternal = /^https?:\/\//i.test(href);
+      const pageType = isExternal ? "" : inferMenuPageType(item, label, href);
 
       return {
         ...item,
         key,
         label,
         href,
+        pageType,
         path: isExternal ? href : normalizePath(href),
         isExternal,
       };

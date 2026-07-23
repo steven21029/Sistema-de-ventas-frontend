@@ -20,13 +20,22 @@ function HeroPromo({ banners = [] }) {
   );
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
-  const hasMultipleSlides = slides.length > 1;
+  const [failedImages, setFailedImages] = useState({});
+  const visibleSlides = useMemo(
+    () => slides.filter((banner) => !failedImages[banner.image]),
+    [failedImages, slides],
+  );
+  const hasMultipleSlides = visibleSlides.length > 1;
 
   useEffect(() => {
-    if (activeIndex >= slides.length) {
+    setFailedImages({});
+  }, [slides]);
+
+  useEffect(() => {
+    if (activeIndex >= visibleSlides.length) {
       setActiveIndex(0);
     }
-  }, [activeIndex, slides.length]);
+  }, [activeIndex, visibleSlides.length]);
 
   useEffect(() => {
     if (!hasMultipleSlides || isPaused) {
@@ -34,24 +43,28 @@ function HeroPromo({ banners = [] }) {
     }
 
     const interval = window.setInterval(() => {
-      setActiveIndex((currentIndex) => (currentIndex + 1) % slides.length);
+      setActiveIndex((currentIndex) => (currentIndex + 1) % visibleSlides.length);
     }, AUTO_ADVANCE_MS);
 
     return () => window.clearInterval(interval);
-  }, [hasMultipleSlides, isPaused, slides.length]);
+  }, [hasMultipleSlides, isPaused, visibleSlides.length]);
 
-  if (slides.length === 0) {
+  if (visibleSlides.length === 0) {
     return null;
   }
 
-  const activeBanner = slides[activeIndex] || slides[0];
-
   function showPrevious() {
-    setActiveIndex((currentIndex) => (currentIndex - 1 + slides.length) % slides.length);
+    setActiveIndex(
+      (currentIndex) => (currentIndex - 1 + visibleSlides.length) % visibleSlides.length,
+    );
   }
 
   function showNext() {
-    setActiveIndex((currentIndex) => (currentIndex + 1) % slides.length);
+    setActiveIndex((currentIndex) => (currentIndex + 1) % visibleSlides.length);
+  }
+
+  function handleImageError(image) {
+    setFailedImages((current) => ({ ...current, [image]: true }));
   }
 
   return (
@@ -63,9 +76,28 @@ function HeroPromo({ banners = [] }) {
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      <a className={styles.bannerLink} href={activeBanner.url} key={`${activeIndex}-${activeBanner.image}`}>
-        <img src={activeBanner.image} alt={activeBanner.alt} />
-      </a>
+      <div className={styles.bannerViewport}>
+        <div
+          className={styles.bannerTrack}
+          style={{ transform: `translateX(-${activeIndex * 100}%)` }}
+        >
+          {visibleSlides.map((banner, index) => (
+            <a
+              className={styles.bannerSlide}
+              href={banner.url}
+              key={`${banner.image}-${index}`}
+              tabIndex={index === activeIndex ? 0 : -1}
+              aria-hidden={index === activeIndex ? undefined : "true"}
+            >
+              <img
+                src={banner.image}
+                alt={banner.alt}
+                onError={() => handleImageError(banner.image)}
+              />
+            </a>
+          ))}
+        </div>
+      </div>
 
       {hasMultipleSlides && (
         <>
@@ -89,8 +121,8 @@ function HeroPromo({ banners = [] }) {
       )}
 
       {hasMultipleSlides && (
-        <div className={styles.carouselDots} aria-label={`${slides.length} banners disponibles`}>
-          {slides.map((banner, index) => (
+        <div className={styles.carouselDots} aria-label={`${visibleSlides.length} banners disponibles`}>
+          {visibleSlides.map((banner, index) => (
             <button
               className={index === activeIndex ? styles.activeDot : ""}
               type="button"
