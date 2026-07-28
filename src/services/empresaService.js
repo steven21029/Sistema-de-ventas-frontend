@@ -1,4 +1,4 @@
-import { apiGet } from "./apiClient";
+import { apiGet, asArray } from "./apiClient";
 
 const FALLBACK_EMPRESA_SLUG = import.meta.env.VITE_EMPRESA_SLUG || "";
 const LOCAL_EMPRESA_STORAGE_KEY = "ventas_empresa_slug";
@@ -38,6 +38,14 @@ function getBrowserEmpresaSlugOverride() {
 
 export function getEmpresaPublica(slug) {
   return apiGet("/empresas/publica/", { slug });
+}
+
+export async function getEmpresaMenu(empresaSlug) {
+  const payload = await apiGet("/empresas/menu/", {
+    empresa_slug: empresaSlug,
+  });
+
+  return asArray(payload);
 }
 
 export async function getEmpresaActual() {

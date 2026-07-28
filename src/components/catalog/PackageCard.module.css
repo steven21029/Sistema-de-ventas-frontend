@@ -135,12 +135,41 @@
   background: #a8adb7;
 }
 
-@media (max-width: 680px) {
+@media (max-width: 760px) {
   .card {
     grid-template-columns: 1fr;
+    min-height: 0;
   }
 
   .media {
-    min-height: 210px;
+    min-height: 190px;
+  }
+
+  .body {
+    padding: 18px;
+  }
+
+  .body h3 {
+    font-size: 21px;
+  }
+
+  .footer strong {
+    font-size: 20px;
+  }
+}
+
+@media (max-width: 520px) {
+  .media {
+    min-height: 160px;
+  }
+
+  .footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .footer button {
+    width: 100%;
+    height: 40px;
   }
 }

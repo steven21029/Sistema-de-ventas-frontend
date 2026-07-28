@@ -5,7 +5,7 @@
 
 .bannerViewport {
   width: 100%;
-  aspect-ratio: 1920 / 540;
+  height: clamp(180px, 18vw, 310px);
   overflow: hidden;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-md);
@@ -105,12 +105,16 @@
 
 @media (max-width: 720px) {
   .carousel {
-    margin-top: 22px;
+    margin-top: 18px;
+  }
+
+  .bannerViewport {
+    height: clamp(140px, 29vw, 220px);
   }
 
   .navButton {
-    width: 36px;
-    height: 36px;
+    width: 34px;
+    height: 34px;
   }
 
   .previousButton {
@@ -123,6 +127,44 @@
 
   .carouselDots {
     bottom: 10px;
+  }
+}
+
+@media (max-width: 520px) {
+  .carousel {
+    margin-top: 14px;
+  }
+
+  .bannerViewport {
+    height: clamp(112px, 32vw, 162px);
+    border-radius: var(--radius-sm);
+  }
+
+  .navButton {
+    width: 30px;
+    height: 30px;
+  }
+
+  .previousButton {
+    left: 8px;
+  }
+
+  .nextButton {
+    right: 8px;
+  }
+
+  .carouselDots {
+    bottom: 8px;
+    gap: 6px;
+  }
+
+  .carouselDots button {
+    width: 8px;
+    height: 8px;
+  }
+
+  .carouselDots .activeDot {
+    width: 20px;
   }
 }
 

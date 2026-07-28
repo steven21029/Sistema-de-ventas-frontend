@@ -4,12 +4,19 @@ import ProductCard from "../components/catalog/ProductCard";
 import { getProductosCatalogo } from "../services/paginasService";
 import styles from "./DynamicPages.module.css";
 
-function ProductListPage({ empresaSlug, initialSearch = "", onAddToCart, title }) {
+function ProductListPage({
+  catalogType = "productos",
+  empresaSlug,
+  initialSearch = "",
+  onAddToCart,
+  title,
+}) {
   const [items, setItems] = useState([]);
   const [searchText, setSearchText] = useState(initialSearch);
   const [query, setQuery] = useState(initialSearch);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const isCompactCatalog = catalogType === "examenes";
 
   useEffect(() => {
     setSearchText(initialSearch);
@@ -28,7 +35,10 @@ function ProductListPage({ empresaSlug, initialSearch = "", onAddToCart, title }
       setError("");
 
       try {
-        const payload = await getProductosCatalogo(empresaSlug, { buscar: query });
+        const payload = await getProductosCatalogo(empresaSlug, {
+          buscar: query,
+          catalogType,
+        });
 
         if (isActive) {
           setItems(payload);
@@ -50,7 +60,7 @@ function ProductListPage({ empresaSlug, initialSearch = "", onAddToCart, title }
     return () => {
       isActive = false;
     };
-  }, [empresaSlug, query]);
+  }, [catalogType, empresaSlug, query]);
 
   function handleSubmit(event) {
     event.preventDefault();
@@ -85,12 +95,13 @@ function ProductListPage({ empresaSlug, initialSearch = "", onAddToCart, title }
       {isLoading ? (
         <div className={styles.statusBox}>Cargando productos...</div>
       ) : items.length > 0 ? (
-        <div className={styles.grid}>
+        <div className={`${styles.grid} ${isCompactCatalog ? styles.miniProductGrid : ""}`}>
           {items.map((product) => (
             <ProductCard
               key={product.codigo_barra || product.nombre}
               product={product}
               onAddToCart={onAddToCart}
+              variant={isCompactCatalog ? "mini" : "default"}
             />
           ))}
         </div>

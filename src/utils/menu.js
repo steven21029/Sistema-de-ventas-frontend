@@ -206,6 +206,16 @@ function inferMenuPageType(item, label, href) {
   return "";
 }
 
+function isStandaloneExamItem(item) {
+  const target = slugify(`${item.key || ""} ${item.label || ""} ${item.path || ""}`);
+
+  return item.pageType === "productos" && target.includes("examen");
+}
+
+function isExamPath(path) {
+  return path === "/examenes" || path.startsWith("/examenes/");
+}
+
 export function normalizeMenuItems(menu = []) {
   const sourceItems = Array.isArray(menu) && menu.length > 0 ? menu : DEFAULT_MENU_ITEMS;
 
@@ -228,19 +238,32 @@ export function normalizeMenuItems(menu = []) {
         path: isExternal ? href : normalizePath(href),
         isExternal,
       };
-    });
+    })
+    .filter((item) => !isStandaloneExamItem(item));
 }
 
 export function findActiveMenuItem(menuItems, currentPath) {
   const normalizedCurrentPath = normalizePath(currentPath);
   const homeItem = menuItems.find((item) => item.key === "inicio") || menuItems[0];
+  const servicesItem = menuItems.find((item) => item.pageType === "servicios");
 
   if (normalizedCurrentPath === "/") {
     return homeItem;
   }
 
+  if (isExamPath(normalizedCurrentPath) && servicesItem) {
+    return servicesItem;
+  }
+
   return (
     menuItems.find((item) => !item.isExternal && item.path === normalizedCurrentPath) ||
+    menuItems.find(
+      (item) =>
+        !item.isExternal &&
+        item.path &&
+        item.path !== "/" &&
+        normalizedCurrentPath.startsWith(`${item.path}/`),
+    ) ||
     homeItem
   );
 }

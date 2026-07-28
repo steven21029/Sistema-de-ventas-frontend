@@ -13,7 +13,13 @@ function countLabel(items, singular, plural) {
   return items.length === 1 ? `1 ${singular}` : `${items.length} ${plural}`;
 }
 
-function HomePage({ banners, empresaSlug, isDemoMode = false, onAddToCart }) {
+function HomePage({
+  banners,
+  empresaSlug,
+  isDemoMode = false,
+  onAddToCart,
+  onNavigate,
+}) {
   const [combos, setCombos] = useState([]);
   const [bestSellers, setBestSellers] = useState([]);
   const [isCombosLoading, setIsCombosLoading] = useState(false);
@@ -92,7 +98,7 @@ function HomePage({ banners, empresaSlug, isDemoMode = false, onAddToCart }) {
 
   return (
     <>
-      {banners.length > 0 && <HeroPromo banners={banners} />}
+      {banners.length > 0 && <HeroPromo banners={banners} onNavigate={onNavigate} />}
 
       {showCombosSection && (
         <section className={styles.section} aria-label="Combos destacados">

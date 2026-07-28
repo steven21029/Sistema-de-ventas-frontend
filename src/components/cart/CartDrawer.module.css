@@ -39,7 +39,7 @@
   color: var(--color-red-dark);
   font-size: 12px;
   font-weight: 800;
-  letter-spacing: 1px;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -177,4 +177,42 @@
 .checkoutButton:disabled {
   cursor: not-allowed;
   background: #a8adb7;
+}
+
+@media (max-width: 520px) {
+  .drawer {
+    width: 100%;
+    padding: 20px 16px;
+  }
+
+  .header {
+    gap: 14px;
+    padding-bottom: 14px;
+  }
+
+  .header p {
+    letter-spacing: 0;
+  }
+
+  .header h2 {
+    font-size: 24px;
+  }
+
+  .items {
+    margin: 16px 0;
+  }
+
+  .item,
+  .empty {
+    padding: 14px;
+  }
+
+  .grandTotal dt,
+  .grandTotal dd {
+    font-size: 18px;
+  }
+
+  .checkoutButton {
+    min-height: 46px;
+  }
 }

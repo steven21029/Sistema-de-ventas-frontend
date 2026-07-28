@@ -13,3 +13,11 @@ export async function getBannersPromocionales(empresaSlug) {
     return firstOrder - secondOrder;
   });
 }
+
+export async function getOfertasPromocionales(empresaSlug) {
+  const payload = await apiGet("/promociones/ofertas/", {
+    empresa_slug: empresaSlug,
+  });
+
+  return asArray(payload).filter((offer) => offer?.activo !== false);
+}

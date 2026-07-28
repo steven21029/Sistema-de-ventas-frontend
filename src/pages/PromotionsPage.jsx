@@ -1,18 +1,187 @@
-import HeroPromo from "../components/catalog/HeroPromo";
+import { ExternalLink, Tag } from "lucide-react";
+import { useEffect, useState } from "react";
+import { resolveMediaUrl } from "../services/apiClient";
+import { getOfertasPromocionales } from "../services/promocionesService";
+import { formatMoney, toNumber } from "../utils/money";
 import styles from "./DynamicPages.module.css";
 
-function PromotionsPage({ banners, title }) {
+function isExternalUrl(value) {
+  return /^https?:\/\//i.test(value || "");
+}
+
+function OfferCard({ offer, onNavigate }) {
+  const [hasImageError, setHasImageError] = useState(false);
+  const imageUrl = resolveMediaUrl(offer.imagen_final);
+  const normalPrice = toNumber(offer.precio_normal);
+  const offerPrice = toNumber(offer.precio_oferta);
+  const hasPrice = offerPrice > 0;
+  const hasDiscount = normalPrice > offerPrice && hasPrice;
+  const destination = offer.url_destino || "";
+  const external = isExternalUrl(destination);
+  const products = Array.isArray(offer.productos) ? offer.productos : [];
+
+  useEffect(() => {
+    setHasImageError(false);
+  }, [imageUrl]);
+
+  function handleClick(event) {
+    if (!destination) {
+      event.preventDefault();
+      return;
+    }
+
+    if (
+      external ||
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    onNavigate(destination);
+  }
+
+  return (
+    <article className={styles.offerCard}>
+      <a
+        className={styles.offerMedia}
+        href={destination || "#"}
+        onClick={handleClick}
+        target={external ? "_blank" : undefined}
+        rel={external ? "noreferrer" : undefined}
+        aria-label={offer.titulo}
+      >
+        {imageUrl && !hasImageError ? (
+          <img
+            src={imageUrl}
+            alt={offer.titulo}
+            onError={() => setHasImageError(true)}
+          />
+        ) : (
+          <div className={styles.imagePlaceholder} aria-hidden="true" />
+        )}
+      </a>
+
+      <div className={styles.offerBody}>
+        <div className={styles.offerMeta}>
+          <span>
+            <Tag size={15} aria-hidden="true" />
+            {offer.tipo || "oferta"}
+          </span>
+          {Number(offer.porcentaje_descuento) > 0 && (
+            <strong>{offer.porcentaje_descuento}% menos</strong>
+          )}
+        </div>
+
+        <h3>{offer.titulo}</h3>
+        {offer.descripcion && <p>{offer.descripcion}</p>}
+
+        {products.length > 0 && (
+          <ul className={styles.offerProducts}>
+            {products.slice(0, 4).map((product) => (
+              <li key={product.codigo_barra || product.codigo || product.nombre}>
+                {product.nombre}
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className={styles.offerFooter}>
+          <div>
+            {hasDiscount && <small>{formatMoney(normalPrice)}</small>}
+            <strong>{hasPrice ? formatMoney(offerPrice) : "Ver promocion"}</strong>
+          </div>
+
+          {destination && (
+            <a
+              className={styles.offerLink}
+              href={destination}
+              onClick={handleClick}
+              target={external ? "_blank" : undefined}
+              rel={external ? "noreferrer" : undefined}
+            >
+              Ver detalle
+              <ExternalLink size={16} aria-hidden="true" />
+            </a>
+          )}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function PromotionsPage({ empresaSlug, onNavigate, title }) {
+  const [offers, setOffers] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let isActive = true;
+
+    if (!empresaSlug) {
+      return undefined;
+    }
+
+    async function loadOffers() {
+      setIsLoading(true);
+      setError("");
+
+      try {
+        const payload = await getOfertasPromocionales(empresaSlug);
+
+        if (isActive) {
+          setOffers(payload);
+        }
+      } catch {
+        if (isActive) {
+          setOffers([]);
+          setError("No se pudieron cargar las promociones.");
+        }
+      } finally {
+        if (isActive) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadOffers();
+
+    return () => {
+      isActive = false;
+    };
+  }, [empresaSlug]);
+
   return (
     <section className={styles.page} aria-label={title}>
       <div className={styles.pageHead}>
         <div>
-          <p>Promociones</p>
+          <p>Ofertas</p>
           <h1>{title}</h1>
+          <span className={styles.count}>
+            {isLoading ? "Actualizando promociones" : `${offers.length} promociones`}
+          </span>
         </div>
       </div>
 
-      {banners.length > 0 ? (
-        <HeroPromo banners={banners} />
+      {error && <div className={styles.statusBox}>{error}</div>}
+
+      {isLoading ? (
+        <div className={styles.statusBox}>Cargando promociones...</div>
+      ) : offers.length > 0 ? (
+        <div className={styles.grid}>
+          {offers.map((offer) => (
+            <OfferCard
+              offer={offer}
+              key={offer.codigo || offer.titulo}
+              onNavigate={onNavigate}
+            />
+          ))}
+        </div>
       ) : (
         <div className={styles.statusBox}>No hay promociones activas por ahora.</div>
       )}

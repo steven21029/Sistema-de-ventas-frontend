@@ -1,5 +1,6 @@
 import { Clock, MapPin, Phone, Search } from "lucide-react";
 import { useEffect, useState } from "react";
+import { resolveMediaUrl } from "../services/apiClient";
 import { getSucursales } from "../services/paginasService";
 import styles from "./DynamicPages.module.css";
 
@@ -80,43 +81,59 @@ function BranchesPage({ empresaSlug, title }) {
         <div className={styles.statusBox}>Cargando sucursales...</div>
       ) : items.length > 0 ? (
         <div className={styles.threeGrid}>
-          {items.map((item) => (
-            <article className={styles.branchCard} key={item.nombre}>
-              <div className={styles.cardBody}>
-                <h3>{item.nombre}</h3>
-                <div className={styles.branchDetails}>
-                  {item.direccion && (
-                    <span>
-                      <MapPin size={17} aria-hidden="true" />
-                      {item.direccion}
-                    </span>
-                  )}
-                  {item.telefono && (
-                    <span>
-                      <Phone size={17} aria-hidden="true" />
-                      {item.telefono}
-                    </span>
-                  )}
-                  {item.horario && (
-                    <span>
-                      <Clock size={17} aria-hidden="true" />
-                      {item.horario}
-                    </span>
+          {items.map((item) => {
+            const imageUrl = resolveMediaUrl(item.imagen_final || item.imagen || item.foto);
+
+            return (
+              <article
+                className={`${styles.branchCard} ${
+                  imageUrl ? styles.branchCardWithImage : ""
+                }`}
+                key={item.nombre}
+              >
+                {imageUrl && (
+                  <img
+                    className={styles.branchImage}
+                    src={imageUrl}
+                    alt={`Sucursal ${item.nombre}`}
+                  />
+                )}
+                <div className={styles.cardBody}>
+                  <h3 className={styles.branchTitle}>{item.nombre}</h3>
+                  <div className={styles.branchDetails}>
+                    {item.direccion && (
+                      <span>
+                        <MapPin size={17} aria-hidden="true" />
+                        {item.direccion}
+                      </span>
+                    )}
+                    {item.telefono && (
+                      <span>
+                        <Phone size={17} aria-hidden="true" />
+                        {item.telefono}
+                      </span>
+                    )}
+                    {item.horario && (
+                      <span>
+                        <Clock size={17} aria-hidden="true" />
+                        {item.horario}
+                      </span>
+                    )}
+                  </div>
+                  {item.google_maps_url && (
+                    <a
+                      className={styles.mapLink}
+                      href={item.google_maps_url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Abrir en Google Maps
+                    </a>
                   )}
                 </div>
-                {item.google_maps_url && (
-                  <a
-                    className={styles.mapLink}
-                    href={item.google_maps_url}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Abrir en Google Maps
-                  </a>
-                )}
-              </div>
-            </article>
-          ))}
+              </article>
+            );
+          })}
         </div>
       ) : (
         <div className={styles.statusBox}>No se encontraron sucursales.</div>

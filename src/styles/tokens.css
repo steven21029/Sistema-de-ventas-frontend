@@ -10,7 +10,7 @@
   --shadow-soft: 0 18px 55px rgba(45, 75, 119, 0.12);
   --radius-sm: 6px;
   --radius-md: 8px;
-  --page-max: 1440px;
+  --page-max: clamp(1120px, 88vw, 1440px);
   font-family:
     "Segoe UI",
     "Aptos",

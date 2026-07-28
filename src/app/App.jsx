@@ -4,7 +4,7 @@ import MenuPage from "../components/content/MenuPage";
 import Header from "../components/layout/Header";
 import MainNav from "../components/layout/MainNav";
 import { DEMO_BANNERS, DEMO_EMPRESA } from "../config/demoContent";
-import { getEmpresaActual } from "../services/empresaService";
+import { getEmpresaActual, getEmpresaMenu } from "../services/empresaService";
 import { getBannersPromocionales } from "../services/promocionesService";
 import BranchesPage from "../pages/BranchesPage";
 import ContactPage from "../pages/ContactPage";
@@ -39,6 +39,12 @@ function getSellablePrice(item) {
 
 function getPageKind(menuItem) {
   return menuItem?.pageType || "inicio";
+}
+
+function getProductCatalogType(menuItem) {
+  const target = `${menuItem?.key || ""} ${menuItem?.label || ""} ${menuItem?.path || ""}`;
+
+  return target.includes("examen") ? "examenes" : "productos";
 }
 
 function App() {
@@ -90,9 +96,22 @@ function App() {
       try {
         const empresaPayload = await getEmpresaActual();
         const resolvedEmpresaSlug = empresaPayload?.slug || LOCAL_EMPRESA_SLUG;
+        let resolvedEmpresa = empresaPayload;
+
+        if (resolvedEmpresaSlug && !Array.isArray(empresaPayload?.menu)) {
+          try {
+            const menuPayload = await getEmpresaMenu(resolvedEmpresaSlug);
+            resolvedEmpresa = {
+              ...empresaPayload,
+              menu: menuPayload,
+            };
+          } catch {
+            resolvedEmpresa = empresaPayload;
+          }
+        }
 
         if (isActive) {
-          setEmpresa(empresaPayload);
+          setEmpresa(resolvedEmpresa);
           setEmpresaSlug(resolvedEmpresaSlug);
           setIsDemoMode(false);
         }
@@ -307,6 +326,7 @@ function App() {
       case "productos":
         return (
           <ProductListPage
+            catalogType={getProductCatalogType(activeMenuItem)}
             empresaSlug={empresaSlug}
             initialSearch={menuSearchText}
             onAddToCart={handleAddToCart}
@@ -322,9 +342,21 @@ function App() {
           />
         );
       case "servicios":
-        return <ServiceTypesPage empresaSlug={empresaSlug} title={pageTitle} />;
+        return (
+          <ServiceTypesPage
+            empresaSlug={empresaSlug}
+            onAddToCart={handleAddToCart}
+            title={pageTitle}
+          />
+        );
       case "promociones":
-        return <PromotionsPage banners={bannersConImagen} title={pageTitle} />;
+        return (
+          <PromotionsPage
+            empresaSlug={empresaSlug}
+            onNavigate={navigateToInternalPath}
+            title={pageTitle}
+          />
+        );
       case "sucursales":
         return <BranchesPage empresaSlug={empresaSlug} title={pageTitle} />;
       case "contacto":
@@ -335,6 +367,7 @@ function App() {
             banners={bannersConImagen}
             empresaSlug={empresaSlug}
             isDemoMode={isDemoMode}
+            onNavigate={navigateToInternalPath}
             onAddToCart={handleAddToCart}
           />
         );

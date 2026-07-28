@@ -18,6 +18,11 @@
   transform: translateY(-2px);
 }
 
+.compactCard {
+  grid-template-columns: 1fr;
+  min-height: 0;
+}
+
 .media {
   position: relative;
   min-height: 250px;
@@ -26,12 +31,21 @@
     #f7f9fc;
 }
 
+.compactCard .media {
+  min-height: 0;
+  aspect-ratio: 1 / 1;
+}
+
 .media img {
   width: 100%;
   height: 100%;
   display: block;
   object-fit: contain;
   padding: 14px;
+}
+
+.compactCard .media img {
+  padding: 10px;
 }
 
 .placeholder {
@@ -56,6 +70,13 @@
   font-weight: 800;
 }
 
+.compactCard .badge {
+  top: 10px;
+  left: 10px;
+  padding: 5px 8px;
+  font-size: 11px;
+}
+
 .available {
   background: var(--color-blue);
 }
@@ -70,6 +91,10 @@
   padding: 24px;
 }
 
+.compactCard .body {
+  padding: 14px;
+}
+
 .metaRow {
   display: flex;
   align-items: center;
@@ -78,11 +103,19 @@
   margin-bottom: 10px;
 }
 
+.compactCard .metaRow {
+  margin-bottom: 8px;
+}
+
+.compactCard .stockNote {
+  display: none;
+}
+
 .category {
   color: var(--color-red-dark);
   font-size: 12px;
   font-weight: 800;
-  letter-spacing: 0.8px;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -104,6 +137,11 @@
   letter-spacing: 0;
 }
 
+.compactCard .body h3 {
+  font-size: 18px;
+  line-height: 1.15;
+}
+
 .description {
   min-height: 48px;
   margin: 12px 0 18px;
@@ -111,11 +149,24 @@
   line-height: 1.5;
 }
 
+.compactCard .description {
+  min-height: 0;
+  margin: 8px 0 12px;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 .details {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   margin: 0 0 18px;
+}
+
+.compactCard .details {
+  display: none;
 }
 
 .details div {
@@ -131,7 +182,7 @@
   color: var(--color-muted);
   font-size: 11px;
   font-weight: 800;
-  letter-spacing: 0.7px;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -155,6 +206,13 @@
   border-top: 1px solid var(--color-line);
 }
 
+.compactCard .footer {
+  align-items: stretch;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 12px;
+}
+
 .footer small {
   display: block;
   color: var(--color-muted);
@@ -166,6 +224,10 @@
   margin-top: 4px;
   color: var(--color-red-dark);
   font-size: 22px;
+}
+
+.compactCard .footer strong {
+  font-size: 18px;
 }
 
 .footer button {
@@ -183,20 +245,143 @@
   font-weight: 800;
 }
 
+.compactCard .footer button {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+}
+
+.miniCard .media {
+  aspect-ratio: 5 / 6;
+}
+
+.miniCard .media img {
+  padding: 10px;
+}
+
+.miniCard .badge {
+  top: 8px;
+  left: 8px;
+  padding: 4px 7px;
+  font-size: 10px;
+}
+
+.miniCard .body {
+  padding: 10px;
+}
+
+.miniCard .metaRow {
+  margin-bottom: 6px;
+}
+
+.miniCard .category {
+  font-size: 10px;
+}
+
+.miniCard .body h3 {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 15px;
+  line-height: 1.15;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.miniCard .description {
+  margin: 6px 0 8px;
+  font-size: 12px;
+  line-height: 1.35;
+  -webkit-line-clamp: 1;
+}
+
+.miniCard .footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding-top: 8px;
+}
+
+.miniCard .footer small {
+  display: none;
+}
+
+.miniCard .footer strong {
+  margin-top: 0;
+  font-size: 15px;
+}
+
+.miniCard .footer button {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  padding: 0;
+}
+
+.miniCard .footer button span {
+  display: none;
+}
+
 .footer button:disabled {
   cursor: not-allowed;
   background: #a8adb7;
 }
 
-@media (max-width: 620px) {
+@media (max-width: 760px) {
   .card {
     grid-template-columns: 1fr;
+    min-height: 0;
   }
 
   .media {
-    min-height: 180px;
+    min-height: 190px;
   }
 
+  .body {
+    padding: 18px;
+  }
+
+  .body h3 {
+    font-size: 21px;
+  }
+
+  .description {
+    min-height: 0;
+    margin-bottom: 14px;
+  }
+
+  .footer strong {
+    font-size: 20px;
+  }
+}
+
+@media (max-width: 520px) {
+  .media {
+    min-height: 160px;
+  }
+
+  .media img {
+    padding: 10px;
+  }
+
+  .metaRow,
+  .footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .details {
+    grid-template-columns: 1fr;
+    margin-bottom: 14px;
+  }
+
+  .footer button {
+    width: 100%;
+    height: 40px;
+  }
+}
+
+@media (max-width: 620px) {
   .details {
     grid-template-columns: 1fr;
   }

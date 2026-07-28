@@ -4,7 +4,7 @@ import { resolveMediaUrl } from "../../services/apiClient";
 import { formatMoney, toNumber } from "../../utils/money";
 import styles from "./ProductCard.module.css";
 
-function ProductCard({ onAddToCart, product }) {
+function ProductCard({ onAddToCart, product, variant = "default" }) {
   const imageUrl = resolveMediaUrl(product.imagen_final || product.imagen_principal);
   const [hasImageError, setHasImageError] = useState(false);
   const hasStockInfo =
@@ -18,13 +18,17 @@ function ProductCard({ onAddToCart, product }) {
   const familyLabel = product.familia_nombre || "General";
   const stockLabel = isOutOfStock ? "Agotado" : "Disponible";
   const buttonLabel = isOutOfStock ? "Agotado" : "Agregar";
+  const isCompactVariant = variant === "compact" || variant === "mini";
+  const cardClassName = `${styles.card} ${isCompactVariant ? styles.compactCard : ""} ${
+    variant === "mini" ? styles.miniCard : ""
+  }`;
 
   useEffect(() => {
     setHasImageError(false);
   }, [imageUrl]);
 
   return (
-    <article className={styles.card}>
+    <article className={cardClassName}>
       <div className={styles.media}>
         {imageUrl && !hasImageError ? (
           <img

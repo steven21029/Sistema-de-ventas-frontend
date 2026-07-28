@@ -40,7 +40,28 @@
 
 @media (max-width: 720px) {
   .nav {
+    gap: 22px;
+    margin-top: 20px;
     margin-inline: -16px;
     padding-inline: 16px;
+  }
+
+  .nav a {
+    padding-bottom: 14px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 520px) {
+  .nav {
+    gap: 18px;
+    margin-top: 16px;
+    margin-inline: -12px;
+    padding-inline: 12px;
+  }
+
+  .nav a {
+    padding-bottom: 12px;
+    font-size: 13px;
   }
 }

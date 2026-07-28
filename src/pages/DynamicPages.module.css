@@ -113,7 +113,8 @@
 }
 
 .serviceCard,
-.branchCard {
+.branchCard,
+.offerCard {
   min-height: 100%;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-md);
@@ -131,6 +132,11 @@
   height: 100%;
   display: block;
   object-fit: cover;
+}
+
+.serviceLink {
+  display: block;
+  min-height: 100%;
 }
 
 .imagePlaceholder {
@@ -161,8 +167,145 @@
   line-height: 1.5;
 }
 
-.branchCard {
+.offerCard {
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.offerMedia {
+  aspect-ratio: 16 / 9;
+  background: var(--color-surface-soft);
+}
+
+.offerMedia img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.offerBody {
+  display: grid;
+  align-content: start;
   padding: 22px;
+}
+
+.offerMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.offerMeta span,
+.offerMeta strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.offerMeta span {
+  color: var(--color-red-dark);
+}
+
+.offerMeta strong {
+  padding: 5px 9px;
+  border-radius: 999px;
+  color: white;
+  background: var(--color-red-dark);
+}
+
+.offerBody h3 {
+  margin: 0;
+  color: var(--color-blue);
+  font-size: 24px;
+  line-height: 1.12;
+  letter-spacing: 0;
+}
+
+.offerBody p {
+  margin: 12px 0 0;
+  color: var(--color-muted);
+  line-height: 1.5;
+}
+
+.offerProducts {
+  display: grid;
+  gap: 6px;
+  margin: 16px 0 0;
+  padding: 0 0 0 18px;
+  color: var(--color-muted);
+}
+
+.offerProducts li::marker {
+  color: var(--color-red-dark);
+}
+
+.offerFooter {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: auto;
+  padding-top: 18px;
+  border-top: 1px solid var(--color-line);
+}
+
+.offerFooter small {
+  display: block;
+  color: var(--color-muted);
+  font-weight: 800;
+  text-decoration: line-through;
+}
+
+.offerFooter strong {
+  display: block;
+  color: var(--color-red-dark);
+  font-size: 22px;
+}
+
+.offerLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--color-blue);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.branchCard {
+  position: relative;
+  padding: 22px;
+}
+
+.branchCard .cardBody {
+  padding: 0;
+}
+
+.branchCardWithImage .cardBody {
+  padding-right: 170px;
+}
+
+.branchTitle {
+  max-width: 100%;
+  font-size: 28px !important;
+  line-height: 1.08;
+}
+
+.branchImage {
+  position: absolute;
+  top: 50px;
+  right: 30px;
+  width: 140px;
+  height: 140px;
+  border:0;
+  border-radius: 0;
+ background: transparent;
+  object-fit: cover;
 }
 
 .branchDetails {
@@ -278,11 +421,613 @@
 }
 
 @media (max-width: 640px) {
+  .page,
+  .section {
+    margin-top: 22px;
+  }
+
+  .sectionHead,
+  .pageHead {
+    gap: 14px;
+    margin-bottom: 12px;
+  }
+
+  .sectionHead h2 {
+    font-size: 22px;
+  }
+
   .pageHead h1 {
-    font-size: 36px;
+    font-size: 31px;
+  }
+
+  .grid,
+  .threeGrid {
+    gap: 14px;
   }
 
   .searchForm {
     width: 100%;
+    min-height: 42px;
+    padding-inline: 13px 10px;
+  }
+
+  .searchForm button,
+  .primaryButton {
+    min-height: 34px;
+    padding-inline: 12px;
+    font-size: 14px;
+  }
+
+  .statusBox {
+    padding: 18px;
+    font-size: 14px;
+  }
+
+  .cardBody,
+  .offerBody,
+  .branchCard,
+  .contactPanel,
+  .contactForm {
+    padding: 16px;
+  }
+
+  .cardBody h3,
+  .offerBody h3 {
+    font-size: 20px;
+  }
+
+  .branchCardWithImage .cardBody {
+    padding-right: 112px;
+  }
+
+  .branchTitle {
+    font-size: 24px !important;
+  }
+
+  .branchImage {
+    top: 14px;
+    right: 14px;
+    width: 94px;
+    height: 94px;
+  }
+
+  .offerFooter {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .offerFooter strong {
+    font-size: 20px;
+  }
+}
+
+@media (max-width: 430px) {
+  .pageHead h1 {
+    font-size: 28px;
+  }
+
+  .searchForm {
+    border-radius: var(--radius-sm);
+  }
+
+  .searchForm button {
+    padding-inline: 10px;
+  }
+}
+
+.compactProductGrid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 1180px) {
+  .compactProductGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .compactProductGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.miniProductGrid {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 620px) {
+  .miniProductGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 430px) {
+  .miniProductGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.serviceAccordion {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  align-items: stretch;
+}
+
+.serviceAccordionItem {
+  min-height: 100%;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  overflow: visible;
+}
+
+.serviceAccordionItemOpen {
+  grid-column: 1 / -1;
+}
+
+.serviceAccordionHeader {
+  position: relative;
+  width: 100%;
+  height: 220px;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(150px, 32%) minmax(0, 1fr) auto;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  color: inherit;
+  background: var(--color-surface);
+  text-align: left;
+  box-shadow: 0 14px 36px rgba(36, 63, 103, 0.08);
+  overflow: hidden;
+  cursor: pointer;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.serviceAccordionItemOpen .serviceAccordionHeader {
+  border-color: rgba(209, 57, 61, 0.34);
+  border-bottom-color: transparent;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  box-shadow: 0 16px 38px rgba(36, 63, 103, 0.1);
+}
+
+.serviceAccordionHeader:hover {
+  border-color: rgba(209, 57, 61, 0.36);
+  box-shadow: 0 18px 44px rgba(36, 63, 103, 0.14);
+  transform: translateY(-2px);
+}
+
+.serviceAccordionHeader:focus-visible {
+  outline: 3px solid rgba(209, 57, 61, 0.26);
+  outline-offset: 3px;
+}
+
+.serviceCardRibbon {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 8px;
+  background: var(--color-red-dark);
+  transition: width 180ms ease;
+}
+
+.serviceAccordionHeader:hover .serviceCardRibbon,
+.serviceAccordionItemOpen .serviceCardRibbon {
+  width: 12px;
+}
+
+.serviceVisual {
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  height: 100%;
+  padding-left: 8px;
+  background:
+    linear-gradient(135deg, rgba(209, 57, 61, 0.16), rgba(45, 75, 119, 0.12)),
+    var(--color-surface-soft);
+  overflow: hidden;
+}
+
+.serviceAccordionImage {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: block;
+  border-radius: 0;
+  background: var(--color-surface-soft);
+  object-fit: cover;
+}
+
+.serviceVisualFallback {
+  width: min(118px, 74%);
+  aspect-ratio: 1 / 1;
+  display: grid;
+  place-items: center;
+  gap: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: var(--radius-md);
+  color: var(--color-blue);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(45, 75, 119, 0.08);
+}
+
+.serviceVisualFallback strong {
+  color: var(--color-red-dark);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 54px;
+  font-weight: 500;
+  line-height: 0.9;
+}
+
+.serviceAccordionText {
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: 9px;
+  padding: 26px 26px 24px;
+}
+
+.serviceEyebrow {
+  color: var(--color-red-dark);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.serviceAccordionText strong {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--color-blue);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(30px, 2.6vw, 46px);
+  font-weight: 500;
+  line-height: 0.98;
+  letter-spacing: 0;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.serviceAccordionText small {
+  display: -webkit-box;
+  max-width: 48ch;
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.serviceStats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 7px;
+}
+
+.serviceStats span {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border: 1px solid rgba(45, 75, 119, 0.1);
+  border-radius: 999px;
+  color: var(--color-blue);
+  background: #f7f9fc;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.serviceActionArea {
+  display: grid;
+  align-content: center;
+  justify-items: end;
+  gap: 14px;
+  min-width: 170px;
+  padding: 24px 24px 24px 0;
+}
+
+.serviceCallToAction {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 15px;
+  border-radius: var(--radius-sm);
+  color: white;
+  background: var(--color-red-dark);
+  font-size: 14px;
+  font-weight: 900;
+  white-space: nowrap;
+  box-shadow: 0 12px 24px rgba(209, 57, 61, 0.18);
+}
+
+.serviceAccordionItemOpen .serviceCallToAction {
+  background: var(--color-blue);
+  box-shadow: 0 12px 24px rgba(45, 75, 119, 0.16);
+}
+
+.serviceAccordionIcon {
+  color: var(--color-blue);
+  transition: transform 180ms ease;
+}
+
+.serviceAccordionItemOpen .serviceAccordionIcon {
+  transform: rotate(180deg);
+}
+
+.serviceAccordionPanel {
+  display: grid;
+  gap: 22px;
+  padding: 24px;
+  border: 1px solid rgba(45, 75, 119, 0.12);
+  border-top: 0;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  background:
+    linear-gradient(180deg, rgba(247, 250, 252, 0.92), rgba(255, 255, 255, 1)),
+    var(--color-surface);
+  box-shadow: 0 18px 40px rgba(36, 63, 103, 0.08);
+}
+
+.servicePanelIntro {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.servicePanelIntro p {
+  margin: 0 0 4px;
+  color: var(--color-red-dark);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.servicePanelIntro strong {
+  color: var(--color-blue);
+  font-size: 24px;
+  line-height: 1.08;
+}
+
+.servicePanelIntro > span {
+  color: var(--color-muted);
+  font-weight: 800;
+}
+
+.serviceAccordionPanel .serviceCategoryStack {
+  gap: 28px;
+  padding-top: 0;
+}
+
+.serviceCategoryBlock {
+  display: grid;
+  gap: 16px;
+  padding-left: 16px;
+  border-left: 4px solid rgba(209, 57, 61, 0.34);
+}
+
+.serviceCategoryHead {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(45, 75, 119, 0.1);
+}
+
+.serviceCategoryHead p {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  margin: 0 0 8px;
+  padding: 0 9px;
+  border-radius: 999px;
+  color: white;
+  background: var(--color-red-dark);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.serviceCategoryHead h2 {
+  margin: 0;
+  color: var(--color-blue);
+  font-size: 26px;
+  line-height: 1.1;
+  letter-spacing: 0;
+}
+
+.serviceCategoryHead span {
+  display: block;
+  margin-top: 7px;
+  color: var(--color-muted);
+  line-height: 1.45;
+}
+
+.serviceSkeletonCard {
+  min-height: 210px;
+  display: grid;
+  grid-template-columns: minmax(150px, 32%) minmax(0, 1fr);
+  gap: 0;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: white;
+  overflow: hidden;
+}
+
+.serviceSkeletonCard > span,
+.serviceSkeletonCard strong,
+.serviceSkeletonCard small,
+.serviceOptionSkeleton span {
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, #eef3f8 0%, #f8fafc 50%, #eef3f8 100%);
+  background-size: 220% 100%;
+  animation: servicePulse 1200ms ease-in-out infinite;
+}
+
+.serviceSkeletonCard > span {
+  min-height: 210px;
+  border-radius: 0;
+}
+
+.serviceSkeletonCard > div {
+  display: grid;
+  align-content: center;
+  gap: 14px;
+  padding: 24px;
+}
+
+.serviceSkeletonCard strong {
+  width: 72%;
+  height: 34px;
+}
+
+.serviceSkeletonCard small {
+  width: 88%;
+  height: 15px;
+}
+
+.serviceSkeletonCard small:last-child {
+  width: 48%;
+}
+
+.serviceOptionSkeleton {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.serviceOptionSkeleton span {
+  min-height: 190px;
+}
+
+.serviceEmptyState {
+  min-height: 280px;
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  padding: 34px;
+  border: 1px dashed rgba(45, 75, 119, 0.28);
+  border-radius: var(--radius-md);
+  color: var(--color-muted);
+  background: #f7f9fc;
+  text-align: center;
+}
+
+.serviceEmptyState > span {
+  width: 78px;
+  height: 78px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-md);
+  color: var(--color-red-dark);
+  background: white;
+  box-shadow: 0 14px 30px rgba(36, 63, 103, 0.1);
+}
+
+.serviceEmptyState h2 {
+  margin: 8px 0 0;
+  color: var(--color-blue);
+  font-size: 28px;
+  line-height: 1.1;
+}
+
+.serviceEmptyState p {
+  max-width: 420px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+@keyframes servicePulse {
+  0% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: -100% 50%;
+  }
+}
+
+@media (max-width: 1120px) {
+  .serviceAccordion {
+    grid-template-columns: 1fr;
+  }
+
+  .serviceAccordionItemOpen {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 760px) {
+  .serviceAccordionHeader,
+  .serviceSkeletonCard {
+    grid-template-columns: 1fr;
+  }
+
+  .serviceAccordionHeader {
+    height: auto;
+    min-height: 0;
+  }
+
+  .serviceVisual,
+  .serviceAccordionImage,
+  .serviceSkeletonCard > span {
+    min-height: 180px;
+  }
+
+  .serviceAccordionText {
+    padding: 20px 18px 8px;
+  }
+
+  .serviceActionArea {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-width: 0;
+    padding: 0 18px 18px;
+  }
+
+  .servicePanelIntro,
+  .serviceCategoryHead {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .serviceOptionSkeleton {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .serviceAccordion {
+    gap: 14px;
+  }
+
+  .serviceAccordionText strong {
+    font-size: 30px;
+  }
+
+  .serviceAccordionPanel {
+    padding: 18px;
+  }
+
+  .serviceCallToAction {
+    min-height: 38px;
+    padding-inline: 12px;
+    font-size: 13px;
   }
 }

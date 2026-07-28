@@ -132,17 +132,87 @@
 }
 
 @media (max-width: 720px) {
+  .header {
+    gap: 14px;
+  }
+
+  .brand {
+    justify-content: flex-start;
+  }
+
   .logo {
-    width: clamp(280px, 82vw, 370px);
-    height: 112px;
+    width: clamp(220px, 68vw, 300px);
+    height: 88px;
   }
 
   .squareCanvasLogo {
-    width: clamp(280px, 82vw, 360px);
-    height: 118px;
+    width: clamp(210px, 68vw, 280px);
+    height: 92px;
   }
 
   .textBrand strong {
-    font-size: 34px;
+    font-size: 30px;
+  }
+
+  .searchBox {
+    min-height: 48px;
+    gap: 10px;
+    padding: 0 16px;
+  }
+
+  .quickActions {
+    gap: 12px;
+    font-size: 14px;
+  }
+
+  .iconTextButton {
+    gap: 6px;
+  }
+}
+
+@media (max-width: 520px) {
+  .logo {
+    width: clamp(190px, 62vw, 250px);
+    height: 70px;
+  }
+
+  .squareCanvasLogo {
+    width: clamp(180px, 62vw, 235px);
+    height: 76px;
+  }
+
+  .textBrand strong {
+    font-size: 26px;
+  }
+
+  .textBrand small {
+    font-size: 12px;
+  }
+
+  .searchBox {
+    min-height: 44px;
+    padding: 0 13px;
+  }
+
+  .quickActions {
+    width: 100%;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .iconTextButton,
+  .cartButton {
+    min-height: 38px;
+  }
+
+  .cartButton {
+    width: 38px;
+  }
+
+  .cartBadge {
+    top: -2px;
+    min-width: 19px;
+    height: 19px;
+    font-size: 11px;
   }
 }

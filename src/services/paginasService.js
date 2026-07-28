@@ -26,7 +26,9 @@ export async function getProductosMasVendidos(empresaSlug) {
 }
 
 export async function getProductosCatalogo(empresaSlug, filters = {}) {
-  const payload = await apiGet("/catalogo/productos/", {
+  const endpoint =
+    filters.catalogType === "examenes" ? "/catalogo/examenes/" : "/catalogo/productos/";
+  const payload = await apiGet(endpoint, {
     empresa_slug: empresaSlug,
     buscar: filters.buscar,
   });
@@ -52,6 +54,13 @@ export async function getServiciosPagina(empresaSlug, filters = {}) {
   });
 
   return sortByOrder(payload);
+}
+
+export async function getServicioDetalle(empresaSlug, servicio) {
+  return apiGet("/catalogo/servicios/detalle/", {
+    empresa_slug: empresaSlug,
+    servicio,
+  });
 }
 
 export async function getSucursales(empresaSlug, filters = {}) {

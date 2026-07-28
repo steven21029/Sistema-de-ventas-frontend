@@ -5,7 +5,11 @@ import styles from "./HeroPromo.module.css";
 
 const AUTO_ADVANCE_MS = 6000;
 
-function HeroPromo({ banners = [] }) {
+function isExternalUrl(value) {
+  return /^https?:\/\//i.test(value || "");
+}
+
+function HeroPromo({ banners = [], onNavigate }) {
   const slides = useMemo(
     () =>
       banners
@@ -67,6 +71,25 @@ function HeroPromo({ banners = [] }) {
     setFailedImages((current) => ({ ...current, [image]: true }));
   }
 
+  function handleSlideClick(event, url) {
+    if (
+      !url ||
+      isExternalUrl(url) ||
+      !url.startsWith("/") ||
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    onNavigate?.(url);
+  }
+
   return (
     <section
       className={styles.carousel}
@@ -86,7 +109,10 @@ function HeroPromo({ banners = [] }) {
               className={styles.bannerSlide}
               href={banner.url}
               key={`${banner.image}-${index}`}
+              onClick={(event) => handleSlideClick(event, banner.url)}
               tabIndex={index === activeIndex ? 0 : -1}
+              target={isExternalUrl(banner.url) ? "_blank" : undefined}
+              rel={isExternalUrl(banner.url) ? "noreferrer" : undefined}
               aria-hidden={index === activeIndex ? undefined : "true"}
             >
               <img

@@ -42,3 +42,16 @@
     padding: 18px 16px 40px;
   }
 }
+
+@media (max-width: 520px) {
+  .appShell {
+    padding: 14px 12px 32px;
+  }
+
+  .errorBanner,
+  .loadingBox {
+    margin-top: 14px;
+    padding: 13px 14px;
+    font-size: 14px;
+  }
+}
