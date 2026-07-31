@@ -2,8 +2,11 @@ const DEFAULT_API_BASE_URL = "/api";
 const API_BASE_URL = (
   import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL
 ).replace(/\/$/, "");
+let accessToken = "";
+let refreshRequest = null;
+let unauthorizedHandler = null;
 
-export class ApiError extends Error {
+class ApiError extends Error {
   constructor(message, status, payload) {
     super(message);
     this.name = "ApiError";
@@ -27,49 +30,156 @@ function buildUrl(path, params = {}) {
   return url;
 }
 
-export async function apiGet(path, params, options = {}) {
-  const response = await fetch(buildUrl(path, params), {
-    cache: "no-store",
-    headers: {
-      Accept: "application/json",
-      ...(options.headers || {}),
-    },
-  });
-
-  const contentType = response.headers.get("content-type") || "";
-  const payload = contentType.includes("application/json")
-    ? await response.json()
-    : await response.text();
-
-  if (!response.ok) {
-    throw new ApiError("No se pudo cargar la informacion solicitada.", response.status, payload);
+async function readResponse(response) {
+  if (response.status === 204) {
+    return null;
   }
 
-  return payload;
+  const contentType = response.headers.get("content-type") || "";
+  const responseText = await response.text();
+
+  if (!responseText) {
+    return null;
+  }
+
+  if (contentType.includes("application/json")) {
+    try {
+      return JSON.parse(responseText);
+    } catch {
+      return responseText;
+    }
+  }
+
+  return responseText;
 }
 
-export async function apiPost(path, body = {}, options = {}) {
-  const response = await fetch(buildUrl(path), {
-    method: "POST",
-    cache: "no-store",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
-    body: JSON.stringify(body),
-  });
+async function performRequest(path, options = {}) {
+  const headers = {
+    Accept: "application/json",
+    ...(options.body !== undefined ? { "Content-Type": "application/json" } : {}),
+    ...(options.headers || {}),
+  };
 
-  const contentType = response.headers.get("content-type") || "";
-  const payload = contentType.includes("application/json")
-    ? await response.json()
-    : await response.text();
-
-  if (!response.ok) {
-    throw new ApiError("No se pudo guardar la informacion solicitada.", response.status, payload);
+  if (options.auth && accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
   }
 
-  return payload;
+  const response = await fetch(buildUrl(path, options.params), {
+    method: options.method || "GET",
+    cache: "no-store",
+    credentials: options.credentials || (options.auth ? "include" : "same-origin"),
+    headers,
+    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+  });
+  const payload = await readResponse(response);
+
+  return { payload, response };
+}
+
+async function request(path, options = {}) {
+  let result = await performRequest(path, options);
+
+  if (result.response.status === 401 && options.auth && options.retryAuth !== false) {
+    const renewedToken = await refreshApiAccessToken();
+
+    if (renewedToken) {
+      result = await performRequest(path, {
+        ...options,
+        retryAuth: false,
+      });
+    }
+  }
+
+  if (!result.response.ok) {
+    if (result.response.status === 401 && options.auth) {
+      setApiAccessToken("");
+      unauthorizedHandler?.();
+    }
+
+    const defaultMessage =
+      (options.method || "GET") === "GET"
+        ? "No se pudo cargar la informacion solicitada."
+        : "No se pudo guardar la informacion solicitada.";
+    throw new ApiError(defaultMessage, result.response.status, result.payload);
+  }
+
+  return result.payload;
+}
+
+export function setApiAccessToken(token) {
+  accessToken = token || "";
+}
+
+export function setApiUnauthorizedHandler(handler) {
+  unauthorizedHandler = typeof handler === "function" ? handler : null;
+
+  return () => {
+    if (unauthorizedHandler === handler) {
+      unauthorizedHandler = null;
+    }
+  };
+}
+
+export async function refreshApiAccessToken() {
+  if (refreshRequest) {
+    return refreshRequest;
+  }
+
+  refreshRequest = (async () => {
+    try {
+      const { payload, response } = await performRequest("/usuarios/token/refresh/", {
+        method: "POST",
+        body: {},
+        credentials: "include",
+      });
+
+      if (!response.ok || !payload?.access) {
+        setApiAccessToken("");
+        return "";
+      }
+
+      setApiAccessToken(payload.access);
+      return payload.access;
+    } catch {
+      setApiAccessToken("");
+      return "";
+    } finally {
+      refreshRequest = null;
+    }
+  })();
+
+  return refreshRequest;
+}
+
+export function apiGet(path, params, options = {}) {
+  return request(path, {
+    ...options,
+    method: "GET",
+    params,
+  });
+}
+
+export function apiPost(path, body = {}, options = {}) {
+  return request(path, {
+    ...options,
+    method: "POST",
+    body,
+  });
+}
+
+export function apiPatch(path, body = {}, options = {}) {
+  return request(path, {
+    ...options,
+    method: "PATCH",
+    body,
+  });
+}
+
+export function apiDelete(path, options = {}) {
+  return request(path, {
+    ...options,
+    method: "DELETE",
+  });
 }
 
 export function asArray(payload) {

@@ -36,10 +36,6 @@ function getBrowserEmpresaSlugOverride() {
   return window.localStorage.getItem(LOCAL_EMPRESA_STORAGE_KEY) || "";
 }
 
-export function getEmpresaPublica(slug) {
-  return apiGet("/empresas/publica/", { slug });
-}
-
 export async function getEmpresaMenu(empresaSlug) {
   const payload = await apiGet("/empresas/menu/", {
     empresa_slug: empresaSlug,

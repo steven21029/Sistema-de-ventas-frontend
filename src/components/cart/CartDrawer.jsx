@@ -3,13 +3,21 @@ import { formatMoney } from "../../utils/money";
 import styles from "./CartDrawer.module.css";
 
 function CartDrawer({
+  calculationError,
+  chargesTax,
   empresa,
+  isAuthenticated,
+  isLoading,
   isOpen,
+  isCalculating,
+  isPersisting,
   items,
   onClose,
+  onCheckout,
   onDecrease,
   onIncrease,
   onRemove,
+  taxPercentage,
   totals,
 }) {
   if (!isOpen) {
@@ -29,38 +37,82 @@ function CartDrawer({
           </button>
         </div>
 
-        {items.length > 0 ? (
+        {isLoading ? (
+          <div className={styles.calculationStatus} role="status">
+            Cargando el carrito de tu cuenta...
+          </div>
+        ) : items.length > 0 ? (
           <div className={styles.items}>
-            {items.map((item) => (
-              <article className={styles.item} key={item.codigo_barra}>
-                <div>
-                  <strong>{item.nombre}</strong>
-                  <span>{formatMoney(item.precio)}</span>
-                </div>
-                <div className={styles.quantity}>
-                  <button type="button" onClick={() => onDecrease(item.codigo_barra)}>
-                    <Minus size={16} aria-hidden="true" />
-                  </button>
-                  <span>{item.cantidad}</span>
-                  <button type="button" onClick={() => onIncrease(item.codigo_barra)}>
-                    <Plus size={16} aria-hidden="true" />
-                  </button>
-                  <button
-                    className={styles.removeButton}
-                    type="button"
-                    onClick={() => onRemove(item.codigo_barra)}
-                    aria-label={`Eliminar ${item.nombre}`}
-                  >
-                    <Trash2 size={16} aria-hidden="true" />
-                  </button>
-                </div>
-              </article>
-            ))}
+            {items.map((item) => {
+              const originalPrice = Number(
+                item.precio_unitario ?? item.precioOriginal ?? item.precio,
+              );
+              const finalPrice = Number(item.precioFinal ?? item.precio);
+              const hasDiscount =
+                Number(item.descuento_total) > 0 || originalPrice > finalPrice;
+
+              return (
+                <article className={styles.item} key={item.cartKey}>
+                  <div className={styles.itemHeading}>
+                    <strong>{item.nombre}</strong>
+                    <span className={styles.itemPrice}>
+                      {hasDiscount && <small>{formatMoney(originalPrice)}</small>}
+                      <b>{formatMoney(finalPrice)}</b>
+                    </span>
+                    {item.descuento_aplicado && (
+                      <span className={styles.discountBadge}>
+                        {item.descuento_aplicado.porcentaje}% de descuento
+                      </span>
+                    )}
+                  </div>
+                  <div className={styles.quantity}>
+                    <button
+                      type="button"
+                      onClick={() => onDecrease(item.cartKey)}
+                      disabled={isPersisting}
+                    >
+                      <Minus size={16} aria-hidden="true" />
+                    </button>
+                    <span>{item.cantidad}</span>
+                    <button
+                      type="button"
+                      onClick={() => onIncrease(item.cartKey)}
+                      disabled={isPersisting}
+                    >
+                      <Plus size={16} aria-hidden="true" />
+                    </button>
+                    <button
+                      className={styles.removeButton}
+                      type="button"
+                      onClick={() => onRemove(item.cartKey)}
+                      disabled={isPersisting}
+                      aria-label={`Eliminar ${item.nombre}`}
+                    >
+                      <Trash2 size={16} aria-hidden="true" />
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         ) : (
           <div className={styles.empty}>
             <strong>Tu carrito esta vacio</strong>
             <span>Agrega productos del catalogo para preparar tu compra.</span>
+          </div>
+        )}
+
+        {!isLoading && (isPersisting || isCalculating) && (
+          <div className={styles.calculationStatus} role="status">
+            {isPersisting
+              ? "Guardando cambios en tu carrito..."
+              : "Calculando descuentos y totales..."}
+          </div>
+        )}
+
+        {calculationError && (
+          <div className={styles.calculationError} role="alert">
+            {calculationError}
           </div>
         )}
 
@@ -73,22 +125,37 @@ function CartDrawer({
             <dt>Descuento</dt>
             <dd>{formatMoney(totals.discount)}</dd>
           </div>
-          <div>
-            <dt>Impuesto 15%</dt>
-            <dd>{formatMoney(totals.tax)}</dd>
-          </div>
-          <div>
-            <dt>Envio</dt>
-            <dd>{empresa?.tiene_envios ? "Por definir" : formatMoney(0)}</dd>
-          </div>
+          {chargesTax && (
+            <div>
+              <dt>Impuesto {taxPercentage}%</dt>
+              <dd>{formatMoney(totals.tax)}</dd>
+            </div>
+          )}
+          {empresa?.tiene_envios === true && (
+            <div>
+              <dt>Envio</dt>
+              <dd>Por definir</dd>
+            </div>
+          )}
           <div className={styles.grandTotal}>
             <dt>Total</dt>
             <dd>{formatMoney(totals.total)}</dd>
           </div>
         </dl>
 
-        <button className={styles.checkoutButton} type="button" disabled={items.length === 0}>
-          Continuar compra
+        <button
+          className={styles.checkoutButton}
+          type="button"
+          onClick={onCheckout}
+          disabled={
+            items.length === 0 ||
+            isLoading ||
+            isPersisting ||
+            isCalculating ||
+            Boolean(calculationError)
+          }
+        >
+          {isAuthenticated ? "Continuar compra" : "Iniciar sesion para continuar"}
         </button>
       </aside>
       <button className={styles.backdrop} type="button" onClick={onClose} aria-label="Cerrar carrito" />

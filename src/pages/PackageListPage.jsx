@@ -1,13 +1,18 @@
-import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import PackageCard from "../components/catalog/PackageCard";
 import { getPerfiles } from "../services/paginasService";
 import styles from "./DynamicPages.module.css";
 
-function PackageListPage({ empresaSlug, onAddToCart, title }) {
+function PackageListPage({
+  empresaSlug,
+  isFavorite,
+  isFavoriteBusy,
+  onAddToCart,
+  onToggleFavorite,
+  searchQuery = "",
+  title,
+}) {
   const [items, setItems] = useState([]);
-  const [searchText, setSearchText] = useState("");
-  const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -23,7 +28,7 @@ function PackageListPage({ empresaSlug, onAddToCart, title }) {
       setError("");
 
       try {
-        const payload = await getPerfiles(empresaSlug, { buscar: query });
+        const payload = await getPerfiles(empresaSlug, { buscar: searchQuery });
 
         if (isActive) {
           setItems(payload);
@@ -45,12 +50,7 @@ function PackageListPage({ empresaSlug, onAddToCart, title }) {
     return () => {
       isActive = false;
     };
-  }, [empresaSlug, query]);
-
-  function handleSubmit(event) {
-    event.preventDefault();
-    setQuery(searchText.trim());
-  }
+  }, [empresaSlug, searchQuery]);
 
   return (
     <section className={styles.page} aria-label={title}>
@@ -62,17 +62,6 @@ function PackageListPage({ empresaSlug, onAddToCart, title }) {
             {isLoading ? "Buscando" : `${items.length} resultados`}
           </span>
         </div>
-
-        <form className={styles.searchForm} onSubmit={handleSubmit}>
-          <Search size={19} aria-hidden="true" />
-          <input
-            type="search"
-            value={searchText}
-            onChange={(event) => setSearchText(event.target.value)}
-            placeholder="Buscar por nombre"
-          />
-          <button type="submit">Buscar</button>
-        </form>
       </div>
 
       {error && <div className={styles.statusBox}>{error}</div>}
@@ -83,15 +72,23 @@ function PackageListPage({ empresaSlug, onAddToCart, title }) {
         <div className={styles.grid}>
           {items.map((item) => (
             <PackageCard
+              favoriteType="perfil"
+              isFavorite={isFavorite}
+              isFavoriteBusy={isFavoriteBusy}
               item={item}
               key={item.codigo || item.nombre}
-              label="Paquete"
+              label="Perfil"
               onAddToCart={onAddToCart}
+              onToggleFavorite={onToggleFavorite}
             />
           ))}
         </div>
       ) : (
-        <div className={styles.statusBox}>No se encontraron paquetes.</div>
+        <div className={styles.statusBox}>
+          {searchQuery
+            ? `No se encontraron paquetes con "${searchQuery}".`
+            : "No se encontraron paquetes."}
+        </div>
       )}
     </section>
   );

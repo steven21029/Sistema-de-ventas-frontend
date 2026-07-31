@@ -19,6 +19,45 @@
   line-height: 1.5;
 }
 
+.purchaseAccess {
+  width: min(100%, 620px);
+  margin: 64px auto 0;
+  padding: 38px;
+  border: 1px solid var(--color-line);
+  border-top: 5px solid var(--color-red-dark);
+  border-radius: var(--radius-md);
+  text-align: center;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.purchaseAccess p {
+  margin: 0 0 6px;
+  color: var(--color-red-dark);
+  font-size: 12px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.purchaseAccess h1 {
+  margin: 0;
+  color: var(--color-blue);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 38px;
+  font-weight: 500;
+}
+
+.purchaseAccess button {
+  min-height: 48px;
+  margin-top: 24px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: white;
+  background: var(--color-red-dark);
+  font-weight: 800;
+}
+
 .errorBanner {
   border: 1px solid rgba(209, 57, 61, 0.28);
   background: rgba(209, 57, 61, 0.08);

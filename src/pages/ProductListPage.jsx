@@ -1,4 +1,3 @@
-import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import ProductCard from "../components/catalog/ProductCard";
 import { getProductosCatalogo } from "../services/paginasService";
@@ -7,21 +6,18 @@ import styles from "./DynamicPages.module.css";
 function ProductListPage({
   catalogType = "productos",
   empresaSlug,
-  initialSearch = "",
+  isFavorite,
+  isFavoriteBusy,
   onAddToCart,
+  onToggleFavorite,
+  productImagesEnabled = true,
+  searchQuery = "",
   title,
 }) {
   const [items, setItems] = useState([]);
-  const [searchText, setSearchText] = useState(initialSearch);
-  const [query, setQuery] = useState(initialSearch);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const isCompactCatalog = catalogType === "examenes";
-
-  useEffect(() => {
-    setSearchText(initialSearch);
-    setQuery(initialSearch);
-  }, [initialSearch]);
 
   useEffect(() => {
     let isActive = true;
@@ -36,7 +32,7 @@ function ProductListPage({
 
       try {
         const payload = await getProductosCatalogo(empresaSlug, {
-          buscar: query,
+          buscar: searchQuery,
           catalogType,
         });
 
@@ -60,12 +56,7 @@ function ProductListPage({
     return () => {
       isActive = false;
     };
-  }, [catalogType, empresaSlug, query]);
-
-  function handleSubmit(event) {
-    event.preventDefault();
-    setQuery(searchText.trim());
-  }
+  }, [catalogType, empresaSlug, searchQuery]);
 
   return (
     <section className={styles.page} aria-label={title}>
@@ -77,17 +68,6 @@ function ProductListPage({
             {isLoading ? "Buscando" : `${items.length} resultados`}
           </span>
         </div>
-
-        <form className={styles.searchForm} onSubmit={handleSubmit}>
-          <Search size={19} aria-hidden="true" />
-          <input
-            type="search"
-            value={searchText}
-            onChange={(event) => setSearchText(event.target.value)}
-            placeholder="Buscar por nombre"
-          />
-          <button type="submit">Buscar</button>
-        </form>
       </div>
 
       {error && <div className={styles.statusBox}>{error}</div>}
@@ -98,15 +78,23 @@ function ProductListPage({
         <div className={`${styles.grid} ${isCompactCatalog ? styles.miniProductGrid : ""}`}>
           {items.map((product) => (
             <ProductCard
-              key={product.codigo_barra || product.nombre}
+              isFavorite={isFavorite}
+              isFavoriteBusy={isFavoriteBusy}
+              key={product.codigo || product.nombre}
               product={product}
               onAddToCart={onAddToCart}
+              onToggleFavorite={onToggleFavorite}
+              showImage={productImagesEnabled}
               variant={isCompactCatalog ? "mini" : "default"}
             />
           ))}
         </div>
       ) : (
-        <div className={styles.statusBox}>No se encontraron productos.</div>
+        <div className={styles.statusBox}>
+          {searchQuery
+            ? `No se encontraron productos con "${searchQuery}".`
+            : "No se encontraron productos."}
+        </div>
       )}
     </section>
   );

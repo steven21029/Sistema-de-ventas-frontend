@@ -1,4 +1,4 @@
-import { ShoppingCart } from "lucide-react";
+import { Heart, ShoppingCart } from "lucide-react";
 import { useEffect, useState } from "react";
 import { resolveMediaUrl } from "../../services/apiClient";
 import { formatMoney, toNumber } from "../../utils/money";
@@ -8,13 +8,23 @@ function getPackagePrice(item) {
   return toNumber(item.precio_combo ?? item.precio_perfil ?? item.precio ?? 0);
 }
 
-function PackageCard({ item, label = "Paquete", onAddToCart }) {
-  const imageUrl = resolveMediaUrl(item.imagen_final || item.imagen_principal);
+function PackageCard({
+  favoriteType = "perfil",
+  isFavorite,
+  isFavoriteBusy,
+  item,
+  label = "Paquete",
+  onAddToCart,
+  onToggleFavorite,
+}) {
+  const imageUrl = resolveMediaUrl(item.imagen_final);
   const [hasImageError, setHasImageError] = useState(false);
   const finalPrice = getPackagePrice(item);
   const normalPrice = toNumber(item.precio_normal);
   const products = Array.isArray(item.productos) ? item.productos : [];
   const hasDiscount = normalPrice > finalPrice && finalPrice > 0;
+  const favoriteSelected = Boolean(isFavorite?.(item, favoriteType));
+  const favoriteBusy = Boolean(isFavoriteBusy?.(item, favoriteType));
 
   useEffect(() => {
     setHasImageError(false);
@@ -29,6 +39,29 @@ function PackageCard({ item, label = "Paquete", onAddToCart }) {
           <div className={styles.placeholder} aria-hidden="true" />
         )}
         <span>{label}</span>
+        {onToggleFavorite && (
+          <button
+            className={`${styles.favoriteButton} ${
+              favoriteSelected ? styles.favoriteButtonActive : ""
+            }`}
+            type="button"
+            onClick={() => onToggleFavorite(item, favoriteType)}
+            disabled={favoriteBusy}
+            aria-label={
+              favoriteSelected
+                ? `Quitar ${item.nombre} de favoritos`
+                : `Guardar ${item.nombre} en favoritos`
+            }
+            aria-pressed={favoriteSelected}
+            title={favoriteSelected ? "Quitar de favoritos" : "Guardar en favoritos"}
+          >
+            <Heart
+              size={18}
+              fill={favoriteSelected ? "currentColor" : "none"}
+              aria-hidden="true"
+            />
+          </button>
+        )}
       </div>
 
       <div className={styles.body}>
@@ -39,7 +72,7 @@ function PackageCard({ item, label = "Paquete", onAddToCart }) {
         {products.length > 0 && (
           <ul className={styles.products}>
             {products.slice(0, 4).map((product) => (
-              <li key={product.codigo_barra || product.codigo || product.nombre}>
+              <li key={product.codigo || product.nombre}>
                 {product.nombre}
               </li>
             ))}
@@ -51,7 +84,17 @@ function PackageCard({ item, label = "Paquete", onAddToCart }) {
             {hasDiscount && <small>{formatMoney(normalPrice)}</small>}
             <strong>{finalPrice > 0 ? formatMoney(finalPrice) : "Por definir"}</strong>
           </div>
-          <button type="button" onClick={() => onAddToCart(item)} disabled={finalPrice <= 0}>
+          <button
+            type="button"
+            onClick={() =>
+              onAddToCart(item, {
+                itemKind: "package",
+                label,
+                tipoArticulo: favoriteType,
+              })
+            }
+            disabled={finalPrice <= 0}
+          >
             <ShoppingCart size={19} aria-hidden="true" />
             Agregar
           </button>

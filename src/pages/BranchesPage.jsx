@@ -1,13 +1,11 @@
-import { Clock, MapPin, Phone, Search } from "lucide-react";
+import { Clock, MapPin, Phone } from "lucide-react";
 import { useEffect, useState } from "react";
 import { resolveMediaUrl } from "../services/apiClient";
 import { getSucursales } from "../services/paginasService";
 import styles from "./DynamicPages.module.css";
 
-function BranchesPage({ empresaSlug, title }) {
+function BranchesPage({ empresaSlug, searchQuery = "", title }) {
   const [items, setItems] = useState([]);
-  const [searchText, setSearchText] = useState("");
-  const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -23,7 +21,7 @@ function BranchesPage({ empresaSlug, title }) {
       setError("");
 
       try {
-        const payload = await getSucursales(empresaSlug, { buscar: query });
+        const payload = await getSucursales(empresaSlug, { buscar: searchQuery });
 
         if (isActive) {
           setItems(payload);
@@ -45,12 +43,7 @@ function BranchesPage({ empresaSlug, title }) {
     return () => {
       isActive = false;
     };
-  }, [empresaSlug, query]);
-
-  function handleSubmit(event) {
-    event.preventDefault();
-    setQuery(searchText.trim());
-  }
+  }, [empresaSlug, searchQuery]);
 
   return (
     <section className={styles.page} aria-label={title}>
@@ -62,17 +55,6 @@ function BranchesPage({ empresaSlug, title }) {
             {isLoading ? "Buscando" : `${items.length} sucursales`}
           </span>
         </div>
-
-        <form className={styles.searchForm} onSubmit={handleSubmit}>
-          <Search size={19} aria-hidden="true" />
-          <input
-            type="search"
-            value={searchText}
-            onChange={(event) => setSearchText(event.target.value)}
-            placeholder="Buscar sucursal"
-          />
-          <button type="submit">Buscar</button>
-        </form>
       </div>
 
       {error && <div className={styles.statusBox}>{error}</div>}
@@ -136,7 +118,11 @@ function BranchesPage({ empresaSlug, title }) {
           })}
         </div>
       ) : (
-        <div className={styles.statusBox}>No se encontraron sucursales.</div>
+        <div className={styles.statusBox}>
+          {searchQuery
+            ? `No se encontraron sucursales con "${searchQuery}".`
+            : "No se encontraron sucursales."}
+        </div>
       )}
     </section>
   );

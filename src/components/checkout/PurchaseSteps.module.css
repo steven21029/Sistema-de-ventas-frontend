@@ -1,0 +1,81 @@
+.steps {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  color: var(--color-muted);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.step:not(:last-child) {
+  flex: 1 1 0;
+}
+
+.step:last-child {
+  flex: 0 0 auto;
+}
+
+.step:not(:last-child)::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  margin-inline: 12px;
+  background: var(--color-line);
+}
+
+.marker {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--color-line);
+  border-radius: 50%;
+  color: var(--color-muted);
+  background: var(--color-surface);
+  font-size: 12px;
+}
+
+.complete,
+.active {
+  color: var(--color-blue);
+}
+
+.complete .marker {
+  border-color: var(--color-blue);
+  color: white;
+  background: var(--color-blue);
+}
+
+.active .marker {
+  border: 2px solid var(--color-red-dark);
+  color: var(--color-red-dark);
+  background: var(--color-surface);
+}
+
+@media (max-width: 560px) {
+  .step {
+    gap: 6px;
+    font-size: 11px;
+  }
+
+  .step:not(:last-child)::after {
+    margin-inline: 6px;
+  }
+
+  .marker {
+    width: 26px;
+    height: 26px;
+    flex-basis: 26px;
+  }
+}

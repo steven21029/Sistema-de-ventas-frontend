@@ -1,4 +1,4 @@
-export const DEMO_IMAGE_PATHS = {
+const DEMO_IMAGE_PATHS = {
   logo: "/demo/tu-logo-aqui.png",
   product: "/demo/tu-producto-aqui.png",
   banner: "/demo/tu-banner-promocional-aqui.png",
@@ -13,6 +13,7 @@ export const DEMO_EMPRESA = {
   color_acento: "#142033",
   color_texto: "#000000",
   color_fondo: "#ffffff",
+  productos_con_imagen: true,
   menu: [
     { clave: "inicio", texto: "Inicio", ruta: "/", orden: 1, activo: true },
     { clave: "productos", texto: "Productos", ruta: "/productos", orden: 2, activo: true },
@@ -36,7 +37,7 @@ export const DEMO_BANNERS = [
 
 export const DEMO_PRODUCTS = [
   {
-    codigo_barra: "DEMO-PRODUCTO",
+    codigo: "DEMO-PRODUCTO",
     nombre: "Tu producto aqui",
     descripcion: "Imagen de producto de prueba para revisar la tienda sin backend.",
     categoria_nombre: "Producto de prueba",

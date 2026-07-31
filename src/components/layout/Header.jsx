@@ -4,13 +4,20 @@ import { resolveMediaUrl } from "../../services/apiClient";
 import styles from "./Header.module.css";
 
 function Header({
+  accountLabel = "Mi cuenta",
   cartCount,
   empresa,
+  favoriteCount = 0,
+  onAccountClick,
   onBrandClick,
   onCartClick,
+  onFavoritesClick,
   onSearchChange,
   onSearchSubmit,
+  searchEnabled = true,
+  searchPlaceholder = "Buscar productos o servicios",
   searchValue,
+  shoppingActionsHidden = false,
 }) {
   const logoUrl = resolveMediaUrl(empresa?.logo);
   const [logoShape, setLogoShape] = useState("wide");
@@ -67,7 +74,10 @@ function Header({
   }
 
   return (
-    <header className={styles.header} aria-label="Encabezado principal">
+    <header
+      className={`${styles.header} ${!searchEnabled ? styles.headerWithoutSearch : ""}`}
+      aria-label="Encabezado principal"
+    >
       <a className={styles.brand} href="/" aria-label={brandName} onClick={handleBrandClick}>
         {logoUrl && !hasLogoError ? (
           <img
@@ -85,33 +95,58 @@ function Header({
         )}
       </a>
 
-      <form className={styles.searchBox} onSubmit={onSearchSubmit}>
-        <Search size={22} aria-hidden="true" />
-        <label className="srOnly" htmlFor="catalog-search">
-          Buscar productos
-        </label>
-        <input
-          id="catalog-search"
-          type="search"
-          value={searchValue}
-          onChange={(event) => onSearchChange(event.target.value)}
-          placeholder="Buscar productos o servicios"
-        />
-      </form>
+      {searchEnabled && (
+        <form className={styles.searchBox} onSubmit={onSearchSubmit}>
+          <Search size={22} aria-hidden="true" />
+          <label className="srOnly" htmlFor="catalog-search">
+            {searchPlaceholder}
+          </label>
+          <input
+            id="catalog-search"
+            type="search"
+            value={searchValue}
+            onChange={(event) => onSearchChange(event.target.value)}
+            placeholder={searchPlaceholder}
+          />
+        </form>
+      )}
 
       <nav className={styles.quickActions} aria-label="Accesos rapidos">
-        <button className={styles.iconTextButton} type="button">
-          <Heart size={24} aria-hidden="true" />
-          <span>Favoritos</span>
-        </button>
-        <button className={styles.cartButton} type="button" onClick={onCartClick}>
-          <ShoppingCart size={25} aria-hidden="true" />
-          <span className="srOnly">Abrir carrito</span>
-          <span className={styles.cartBadge}>{cartCount}</span>
-        </button>
-        <button className={styles.iconTextButton} type="button">
+        {!shoppingActionsHidden && (
+          <>
+            <button
+              className={`${styles.iconTextButton} ${styles.favoriteAction}`}
+              type="button"
+              onClick={onFavoritesClick}
+              aria-label={`Abrir favoritos. ${favoriteCount} guardados`}
+            >
+              <Heart
+                size={24}
+                fill={favoriteCount > 0 ? "currentColor" : "none"}
+                aria-hidden="true"
+              />
+              <span>Favoritos</span>
+              {favoriteCount > 0 && (
+                <span className={styles.favoriteBadge} aria-hidden="true">
+                  {favoriteCount}
+                </span>
+              )}
+            </button>
+            <button className={styles.cartButton} type="button" onClick={onCartClick}>
+              <ShoppingCart size={25} aria-hidden="true" />
+              <span className="srOnly">Abrir carrito</span>
+              <span className={styles.cartBadge}>{cartCount}</span>
+            </button>
+          </>
+        )}
+        <button
+          className={styles.iconTextButton}
+          type="button"
+          onClick={onAccountClick}
+          aria-label={accountLabel}
+        >
           <UserRound size={24} aria-hidden="true" />
-          <span>Mi cuenta</span>
+          <span>{accountLabel}</span>
           <ChevronDown size={17} aria-hidden="true" />
         </button>
       </nav>

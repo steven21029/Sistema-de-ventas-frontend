@@ -75,6 +75,10 @@
   color: #737b8f;
 }
 
+.headerWithoutSearch .quickActions {
+  grid-column: 3;
+}
+
 .quickActions {
   display: flex;
   align-items: center;
@@ -94,6 +98,23 @@
   display: inline-flex;
   align-items: center;
   gap: 9px;
+}
+
+.favoriteAction {
+  position: relative;
+}
+
+.favoriteBadge {
+  min-width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  padding: 0 5px;
+  border-radius: 999px;
+  color: white;
+  background: var(--color-red-dark);
+  font-size: 11px;
+  font-weight: 800;
 }
 
 .cartButton {
@@ -128,6 +149,10 @@
   .quickActions {
     justify-content: flex-start;
     flex-wrap: wrap;
+  }
+
+  .headerWithoutSearch .quickActions {
+    grid-column: 1;
   }
 }
 

@@ -22,7 +22,12 @@ export async function getProductosMasVendidos(empresaSlug) {
     empresa_slug: empresaSlug,
   });
 
-  return asArray(payload);
+  return asArray(payload)
+    .sort(
+      (first, second) =>
+        (Number(second.total_vendido) || 0) - (Number(first.total_vendido) || 0),
+    )
+    .slice(0, 10);
 }
 
 export async function getProductosCatalogo(empresaSlug, filters = {}) {
@@ -35,8 +40,6 @@ export async function getProductosCatalogo(empresaSlug, filters = {}) {
 
   return asArray(payload);
 }
-
-export const getExamenes = getProductosCatalogo;
 
 export async function getPerfiles(empresaSlug, filters = {}) {
   const payload = await apiGet("/catalogo/perfiles/", {

@@ -1,8 +1,9 @@
 import { ChevronDown, Search, ShoppingBag, Sparkles } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import ProductCard from "../components/catalog/ProductCard";
 import { resolveMediaUrl } from "../services/apiClient";
 import { getServicioDetalle, getServiciosPagina } from "../services/paginasService";
+import { normalizeSearchText, textIncludesSearch } from "../utils/search";
 import styles from "./DynamicPages.module.css";
 
 function slugify(value) {
@@ -36,6 +37,14 @@ function getItemName(item) {
   return typeof item === "string" ? item : item?.nombre || item?.titulo || item?.clave || "";
 }
 
+function getCategoryKey(category) {
+  return category?.clave || slugify(getItemName(category));
+}
+
+function getCategoryAccordionKey(serviceKey, category) {
+  return `${serviceKey}:${getCategoryKey(category)}`;
+}
+
 function getCategoryProducts(category) {
   if (!category || typeof category !== "object") {
     return [];
@@ -54,16 +63,40 @@ function getServiceInitial(serviceName) {
   return String(serviceName || "S").trim().charAt(0).toUpperCase() || "S";
 }
 
-function ServiceTypesPage({ empresaSlug, onAddToCart, title }) {
+function hasOwnDetail(detailsByKey, serviceKey) {
+  return Object.prototype.hasOwnProperty.call(detailsByKey, serviceKey);
+}
+
+function ServiceTypesPage({
+  empresaSlug,
+  isFavorite,
+  isFavoriteBusy,
+  onAddToCart,
+  onToggleFavorite,
+  productImagesEnabled = true,
+  searchQuery = "",
+  title,
+}) {
   const [items, setItems] = useState([]);
   const [detailsByKey, setDetailsByKey] = useState({});
   const [detailErrors, setDetailErrors] = useState({});
   const [loadingDetails, setLoadingDetails] = useState({});
   const [expandedService, setExpandedService] = useState("");
-  const [searchText, setSearchText] = useState("");
-  const [query, setQuery] = useState("");
+  const [expandedCategories, setExpandedCategories] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const empresaSlugRef = useRef(empresaSlug);
+  const normalizedSearch = useMemo(() => normalizeSearchText(searchQuery), [searchQuery]);
+  const isSearching = Boolean(normalizedSearch);
+
+  useEffect(() => {
+    empresaSlugRef.current = empresaSlug;
+    setDetailsByKey({});
+    setDetailErrors({});
+    setLoadingDetails({});
+    setExpandedService("");
+    setExpandedCategories({});
+  }, [empresaSlug]);
 
   useEffect(() => {
     let isActive = true;
@@ -77,7 +110,7 @@ function ServiceTypesPage({ empresaSlug, onAddToCart, title }) {
       setError("");
 
       try {
-        const payload = await getServiciosPagina(empresaSlug, { buscar: query });
+        const payload = await getServiciosPagina(empresaSlug);
 
         if (isActive) {
           setItems(payload);
@@ -99,12 +132,210 @@ function ServiceTypesPage({ empresaSlug, onAddToCart, title }) {
     return () => {
       isActive = false;
     };
-  }, [empresaSlug, query]);
+  }, [empresaSlug]);
+
+  useEffect(() => {
+    if (!empresaSlug || !isSearching || items.length === 0) {
+      return;
+    }
+
+    const servicesToLoad = items.filter((service) => {
+      const serviceKey = getServiceKey(service);
+
+      return (
+        !hasOwnDetail(detailsByKey, serviceKey) &&
+        !loadingDetails[serviceKey] &&
+        !detailErrors[serviceKey]
+      );
+    });
+
+    if (servicesToLoad.length === 0) {
+      return;
+    }
+
+    const requestEmpresaSlug = empresaSlug;
+    const serviceKeys = servicesToLoad.map(getServiceKey);
+
+    setLoadingDetails((current) => {
+      const next = { ...current };
+      serviceKeys.forEach((serviceKey) => {
+        next[serviceKey] = true;
+      });
+      return next;
+    });
+
+    async function loadSearchDetails() {
+      const results = await Promise.all(
+        servicesToLoad.map(async (service) => {
+          const serviceKey = getServiceKey(service);
+
+          try {
+            const payload = await getServicioDetalle(
+              requestEmpresaSlug,
+              serviceKey || service.nombre,
+            );
+
+            return { payload, serviceKey };
+          } catch {
+            return {
+              error: "No se pudo revisar los productos de esta familia.",
+              serviceKey,
+            };
+          }
+        }),
+      );
+
+      if (empresaSlugRef.current !== requestEmpresaSlug) {
+        return;
+      }
+
+      setDetailsByKey((current) => {
+        const next = { ...current };
+
+        results.forEach((result) => {
+          if (result.payload) {
+            next[result.serviceKey] = result.payload;
+          }
+        });
+
+        return next;
+      });
+      setDetailErrors((current) => {
+        const next = { ...current };
+
+        results.forEach((result) => {
+          if (result.error) {
+            next[result.serviceKey] = result.error;
+          }
+        });
+
+        return next;
+      });
+      setLoadingDetails((current) => {
+        const next = { ...current };
+        serviceKeys.forEach((serviceKey) => {
+          next[serviceKey] = false;
+        });
+        return next;
+      });
+    }
+
+    loadSearchDetails();
+  }, [
+    detailErrors,
+    detailsByKey,
+    empresaSlug,
+    isSearching,
+    items,
+    loadingDetails,
+  ]);
+
+  const serviceViews = useMemo(
+    () =>
+      items.map((item) => {
+        const serviceKey = getServiceKey(item);
+        const summaryCategories = sortByOrder(asList(item.categorias));
+        const detail = detailsByKey[serviceKey];
+        const detailCategories = sortByOrder(asList(detail?.categorias));
+        const categories =
+          detailCategories.length > 0 ? detailCategories : summaryCategories;
+        const categoryViews = categories
+          .map((category) => {
+            const products = getCategoryProducts(category);
+            const visibleProducts = isSearching
+              ? products.filter((product) =>
+                  textIncludesSearch(getItemName(product), normalizedSearch),
+                )
+              : products;
+
+            return {
+              category,
+              products: visibleProducts,
+            };
+          })
+          .filter((categoryView) => !isSearching || categoryView.products.length > 0);
+        const matchingProductCount = categoryViews.reduce(
+          (total, categoryView) => total + categoryView.products.length,
+          0,
+        );
+
+        return {
+          categoryViews,
+          detail,
+          item,
+          matchingProductCount,
+          serviceKey,
+        };
+      }),
+    [detailsByKey, isSearching, items, normalizedSearch],
+  );
+  const visibleServiceViews = useMemo(
+    () =>
+      isSearching
+        ? serviceViews.filter((serviceView) => serviceView.matchingProductCount > 0)
+        : serviceViews,
+    [isSearching, serviceViews],
+  );
+  const matchingProductCount = useMemo(
+    () =>
+      visibleServiceViews.reduce(
+        (total, serviceView) => total + serviceView.matchingProductCount,
+        0,
+      ),
+    [visibleServiceViews],
+  );
+  const isSearchLoading =
+    isSearching &&
+    items.some((service) => {
+      const serviceKey = getServiceKey(service);
+
+      return (
+        loadingDetails[serviceKey] ||
+        (!hasOwnDetail(detailsByKey, serviceKey) && !detailErrors[serviceKey])
+      );
+    });
+
+  useEffect(() => {
+    if (!isSearching || isSearchLoading || visibleServiceViews.length === 0) {
+      return;
+    }
+
+    const visibleKeys = visibleServiceViews.map((serviceView) => serviceView.serviceKey);
+
+    setExpandedService((current) =>
+      visibleKeys.includes(current) ? current : visibleKeys[0],
+    );
+  }, [isSearchLoading, isSearching, visibleServiceViews]);
+
+  useEffect(() => {
+    if (isSearchLoading) {
+      return;
+    }
+
+    if (!isSearching) {
+      setExpandedCategories({});
+      return;
+    }
+
+    const matchingCategories = {};
+
+    visibleServiceViews.forEach(({ categoryViews, serviceKey }) => {
+      categoryViews.forEach(({ category }) => {
+        matchingCategories[getCategoryAccordionKey(serviceKey, category)] = true;
+      });
+    });
+
+    setExpandedCategories(matchingCategories);
+  }, [isSearchLoading, isSearching, normalizedSearch, visibleServiceViews]);
 
   async function loadDetail(service) {
     const serviceKey = getServiceKey(service);
 
-    if (!empresaSlug || detailsByKey[serviceKey] || loadingDetails[serviceKey]) {
+    if (
+      !empresaSlug ||
+      hasOwnDetail(detailsByKey, serviceKey) ||
+      loadingDetails[serviceKey]
+    ) {
       return;
     }
 
@@ -125,12 +356,6 @@ function ServiceTypesPage({ empresaSlug, onAddToCart, title }) {
     }
   }
 
-  function handleSubmit(event) {
-    event.preventDefault();
-    setQuery(searchText.trim());
-    setExpandedService("");
-  }
-
   function handleToggle(service) {
     const serviceKey = getServiceKey(service);
     const nextExpandedService = expandedService === serviceKey ? "" : serviceKey;
@@ -142,6 +367,15 @@ function ServiceTypesPage({ empresaSlug, onAddToCart, title }) {
     }
   }
 
+  function handleCategoryToggle(serviceKey, category) {
+    const categoryKey = getCategoryAccordionKey(serviceKey, category);
+
+    setExpandedCategories((current) => ({
+      ...current,
+      [categoryKey]: !current[categoryKey],
+    }));
+  }
+
   return (
     <section className={styles.page} aria-label={title}>
       <div className={styles.pageHead}>
@@ -149,25 +383,18 @@ function ServiceTypesPage({ empresaSlug, onAddToCart, title }) {
           <p>Servicios</p>
           <h1>{title}</h1>
           <span className={styles.count}>
-            {isLoading ? "Buscando" : `${items.length} familias`}
+            {isLoading || isSearchLoading
+              ? "Buscando productos"
+              : isSearching
+                ? `${matchingProductCount} productos encontrados`
+                : `${items.length} familias`}
           </span>
         </div>
-
-        <form className={styles.searchForm} onSubmit={handleSubmit}>
-          <Search size={19} aria-hidden="true" />
-          <input
-            type="search"
-            value={searchText}
-            onChange={(event) => setSearchText(event.target.value)}
-            placeholder="Buscar familia"
-          />
-          <button type="submit">Buscar</button>
-        </form>
       </div>
 
       {error && <div className={styles.statusBox}>{error}</div>}
 
-      {isLoading ? (
+      {isLoading || isSearchLoading ? (
         <div className={styles.serviceAccordion} aria-busy="true">
           {[1, 2, 3, 4].map((item) => (
             <div className={styles.serviceSkeletonCard} key={item}>
@@ -180,16 +407,18 @@ function ServiceTypesPage({ empresaSlug, onAddToCart, title }) {
             </div>
           ))}
         </div>
-      ) : items.length > 0 ? (
+      ) : visibleServiceViews.length > 0 ? (
         <div className={styles.serviceAccordion}>
-          {items.map((item) => {
-            const serviceKey = getServiceKey(item);
+          {visibleServiceViews.map((serviceView) => {
+            const {
+              categoryViews,
+              detail,
+              item,
+              matchingProductCount: serviceProductMatches,
+              serviceKey,
+            } = serviceView;
             const isOpen = expandedService === serviceKey;
             const imageUrl = resolveMediaUrl(item.imagen_final || item.imagen);
-            const summaryCategories = sortByOrder(asList(item.categorias));
-            const detail = detailsByKey[serviceKey];
-            const detailCategories = sortByOrder(asList(detail?.categorias));
-            const categories = detailCategories.length > 0 ? detailCategories : summaryCategories;
             const detailError = detailErrors[serviceKey];
             const isDetailLoading = Boolean(loadingDetails[serviceKey]);
             const serviceDescription =
@@ -232,11 +461,17 @@ function ServiceTypesPage({ empresaSlug, onAddToCart, title }) {
                     <strong>{item.nombre}</strong>
                     <small>{serviceDescription}</small>
                     <span className={styles.serviceStats}>
-                      {Number.isFinite(Number(item.cantidad_categorias)) && (
-                        <span>{item.cantidad_categorias} categorias</span>
-                      )}
-                      {Number.isFinite(Number(item.cantidad_productos)) && (
-                        <span>{item.cantidad_productos} productos</span>
+                      {isSearching ? (
+                        <span>{serviceProductMatches} productos encontrados</span>
+                      ) : (
+                        <>
+                          {Number.isFinite(Number(item.cantidad_categorias)) && (
+                            <span>{item.cantidad_categorias} categorias</span>
+                          )}
+                          {Number.isFinite(Number(item.cantidad_productos)) && (
+                            <span>{item.cantidad_productos} productos</span>
+                          )}
+                        </>
                       )}
                     </span>
                   </span>
@@ -262,7 +497,7 @@ function ServiceTypesPage({ empresaSlug, onAddToCart, title }) {
                         <strong>{item.nombre}</strong>
                       </div>
                       <span>
-                        {categories.length} categorias para comprar
+                        {categoryViews.length} categorias para comprar
                       </span>
                     </div>
 
@@ -276,38 +511,93 @@ function ServiceTypesPage({ empresaSlug, onAddToCart, title }) {
 
                     {detailError && <div className={styles.statusBox}>{detailError}</div>}
 
-                    {!isDetailLoading && !detailError && categories.length > 0 && (
+                    {!isDetailLoading && !detailError && categoryViews.length > 0 && (
                       <div className={styles.serviceCategoryStack}>
-                        {categories.map((category) => {
-                          const products = getCategoryProducts(category);
+                        {categoryViews.map(({ category, products }) => {
+                          const categoryKey = getCategoryAccordionKey(
+                            serviceKey,
+                            category,
+                          );
+                          const isCategoryOpen = Boolean(
+                            expandedCategories[categoryKey],
+                          );
+                          const panelId = `service-category-${slugify(categoryKey)}`;
+                          const productCount =
+                            products.length || category.cantidad_productos || 0;
+                          const categoryImageUrl = resolveMediaUrl(
+                            category.imagen_final || category.imagen,
+                          );
 
                           return (
                             <section
-                              className={styles.serviceCategoryBlock}
-                              key={category.clave || getItemName(category)}
+                              className={`${styles.serviceCategoryBlock} ${
+                                isCategoryOpen ? styles.serviceCategoryBlockOpen : ""
+                              }`}
+                              key={categoryKey}
                             >
-                              <div className={styles.serviceCategoryHead}>
-                                <div>
-                                  <p>{products.length || category.cantidad_productos || 0} productos</p>
-                                  <h2>{getItemName(category)}</h2>
-                                  {category.descripcion && <span>{category.descripcion}</span>}
-                                </div>
-                              </div>
+                              <button
+                                className={styles.serviceCategoryToggle}
+                                type="button"
+                                onClick={() =>
+                                  handleCategoryToggle(serviceKey, category)
+                                }
+                                aria-expanded={isCategoryOpen}
+                                aria-controls={panelId}
+                              >
+                                <span className={styles.serviceCategoryMain}>
+                                  {categoryImageUrl && (
+                                    <span
+                                      className={styles.serviceCategoryMedia}
+                                      aria-hidden="true"
+                                    >
+                                      <img src={categoryImageUrl} alt="" />
+                                    </span>
+                                  )}
+                                  <span className={styles.serviceCategoryCopy}>
+                                    <span className={styles.serviceCategoryCount}>
+                                      {productCount} productos
+                                    </span>
+                                    <strong>{getItemName(category)}</strong>
+                                    {category.descripcion && (
+                                      <small>{category.descripcion}</small>
+                                    )}
+                                  </span>
+                                </span>
+                                <ChevronDown
+                                  className={styles.serviceCategoryIcon}
+                                  size={23}
+                                  aria-hidden="true"
+                                />
+                              </button>
 
-                              {products.length > 0 ? (
-                                <div className={`${styles.grid} ${styles.compactProductGrid}`}>
-                                  {products.map((product) => (
-                                    <ProductCard
-                                      key={product.codigo_barra || product.codigo || product.nombre}
-                                      product={product}
-                                      onAddToCart={onAddToCart}
-                                      variant="compact"
-                                    />
-                                  ))}
-                                </div>
-                              ) : (
-                                <div className={styles.statusBox}>
-                                  Esta categoria no tiene productos activos por ahora.
+                              {isCategoryOpen && (
+                                <div
+                                  className={styles.serviceCategoryProducts}
+                                  id={panelId}
+                                >
+                                  {products.length > 0 ? (
+                                    <div
+                                      className={`${styles.grid} ${styles.compactProductGrid}`}
+                                    >
+                                      {products.map((product) => (
+                                        <ProductCard
+                                          isFavorite={isFavorite}
+                                          isFavoriteBusy={isFavoriteBusy}
+                                          key={product.codigo || product.nombre}
+                                          product={product}
+                                          onAddToCart={onAddToCart}
+                                          onToggleFavorite={onToggleFavorite}
+                                          showImage={productImagesEnabled}
+                                          variant="compact"
+                                        />
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <div className={styles.statusBox}>
+                                      Esta categoria no tiene productos activos por
+                                      ahora.
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </section>
@@ -316,7 +606,7 @@ function ServiceTypesPage({ empresaSlug, onAddToCart, title }) {
                       </div>
                     )}
 
-                    {!isDetailLoading && !detailError && categories.length === 0 && (
+                    {!isDetailLoading && !detailError && categoryViews.length === 0 && (
                       <div className={styles.statusBox}>
                         Esta familia no tiene categorias activas por ahora.
                       </div>
@@ -333,7 +623,11 @@ function ServiceTypesPage({ empresaSlug, onAddToCart, title }) {
             <Search size={34} />
           </span>
           <h2>No encontramos servicios</h2>
-          <p>Prueba con otro nombre o revisa las familias disponibles de la empresa.</p>
+          <p>
+            {isSearching
+              ? `No hay productos con "${searchQuery}" dentro de Servicios.`
+              : "No hay familias de servicios disponibles por ahora."}
+          </p>
         </div>
       )}
     </section>

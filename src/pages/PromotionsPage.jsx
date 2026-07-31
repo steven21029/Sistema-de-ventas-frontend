@@ -1,8 +1,9 @@
 import { ExternalLink, Tag } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { resolveMediaUrl } from "../services/apiClient";
 import { getOfertasPromocionales } from "../services/promocionesService";
 import { formatMoney, toNumber } from "../utils/money";
+import { normalizeSearchText, textIncludesSearch } from "../utils/search";
 import styles from "./DynamicPages.module.css";
 
 function isExternalUrl(value) {
@@ -84,7 +85,7 @@ function OfferCard({ offer, onNavigate }) {
         {products.length > 0 && (
           <ul className={styles.offerProducts}>
             {products.slice(0, 4).map((product) => (
-              <li key={product.codigo_barra || product.codigo || product.nombre}>
+              <li key={product.codigo || product.nombre}>
                 {product.nombre}
               </li>
             ))}
@@ -115,7 +116,26 @@ function OfferCard({ offer, onNavigate }) {
   );
 }
 
-function PromotionsPage({ empresaSlug, onNavigate, title }) {
+function getOfferSearchText(offer) {
+  const products = Array.isArray(offer?.productos) ? offer.productos : [];
+  const packageName =
+    typeof offer?.paquete === "string"
+      ? offer.paquete
+      : offer?.paquete?.nombre || offer?.paquete?.titulo;
+
+  return [
+    offer?.codigo,
+    offer?.titulo,
+    offer?.descripcion,
+    offer?.tipo,
+    packageName,
+    ...products.map((product) => product?.nombre),
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function PromotionsPage({ empresaSlug, onNavigate, searchQuery = "", title }) {
   const [offers, setOffers] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -156,6 +176,15 @@ function PromotionsPage({ empresaSlug, onNavigate, title }) {
     };
   }, [empresaSlug]);
 
+  const normalizedSearch = useMemo(() => normalizeSearchText(searchQuery), [searchQuery]);
+  const visibleOffers = useMemo(
+    () =>
+      offers.filter((offer) =>
+        textIncludesSearch(getOfferSearchText(offer), normalizedSearch),
+      ),
+    [normalizedSearch, offers],
+  );
+
   return (
     <section className={styles.page} aria-label={title}>
       <div className={styles.pageHead}>
@@ -163,7 +192,9 @@ function PromotionsPage({ empresaSlug, onNavigate, title }) {
           <p>Ofertas</p>
           <h1>{title}</h1>
           <span className={styles.count}>
-            {isLoading ? "Actualizando promociones" : `${offers.length} promociones`}
+            {isLoading
+              ? "Actualizando promociones"
+              : `${visibleOffers.length} promociones`}
           </span>
         </div>
       </div>
@@ -172,9 +203,9 @@ function PromotionsPage({ empresaSlug, onNavigate, title }) {
 
       {isLoading ? (
         <div className={styles.statusBox}>Cargando promociones...</div>
-      ) : offers.length > 0 ? (
+      ) : visibleOffers.length > 0 ? (
         <div className={styles.grid}>
-          {offers.map((offer) => (
+          {visibleOffers.map((offer) => (
             <OfferCard
               offer={offer}
               key={offer.codigo || offer.titulo}
@@ -183,7 +214,11 @@ function PromotionsPage({ empresaSlug, onNavigate, title }) {
           ))}
         </div>
       ) : (
-        <div className={styles.statusBox}>No hay promociones activas por ahora.</div>
+        <div className={styles.statusBox}>
+          {searchQuery
+            ? `No encontramos promociones con "${searchQuery}".`
+            : "No hay promociones activas por ahora."}
+        </div>
       )}
     </section>
   );
