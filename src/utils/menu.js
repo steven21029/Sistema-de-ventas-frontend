@@ -1,11 +1,17 @@
 const DEFAULT_MENU_ITEMS = [
   { clave: "inicio", texto: "Inicio", ruta: "/", orden: 1 },
-  { clave: "productos", texto: "Productos", ruta: "/productos", orden: 2 },
-  { clave: "paquetes", texto: "Paquetes", ruta: "/paquetes", orden: 3 },
+  { clave: "examenes", texto: "Examenes", ruta: "/examenes", orden: 2 },
+  { clave: "perfiles", texto: "Perfiles", ruta: "/perfiles", orden: 3 },
   { clave: "servicios", texto: "Servicios", ruta: "/servicios", orden: 4 },
   { clave: "promociones", texto: "Promociones", ruta: "/promociones", orden: 5 },
   { clave: "sucursales", texto: "Sucursales", ruta: "/sucursales", orden: 6 },
   { clave: "contacto", texto: "Contacto", ruta: "/contacto", orden: 7 },
+  {
+    clave: "sobre_nosotros",
+    texto: "Sobre nosotros",
+    ruta: "/sobre-nosotros",
+    orden: 8,
+  },
 ];
 
 const PAGE_TYPE_ALIASES = {
@@ -51,6 +57,9 @@ const PAGE_TYPE_ALIASES = {
   contacto: "contacto",
   contactenos: "contacto",
   contact: "contacto",
+  sobre_nosotros: "sobre_nosotros",
+  "sobre-nosotros": "sobre_nosotros",
+  sobrenosotros: "sobre_nosotros",
 };
 
 function slugify(value) {
@@ -131,6 +140,14 @@ function normalizeMenuPageType(value) {
     return "contacto";
   }
 
+  if (
+    normalizedValue.includes("sobre-nosotros") ||
+    normalizedValue.includes("sobrenosotros") ||
+    normalizedValue.includes("about")
+  ) {
+    return "sobre_nosotros";
+  }
+
   return normalizedValue;
 }
 
@@ -203,17 +220,15 @@ function inferMenuPageType(item, label, href) {
     return "contacto";
   }
 
+  if (
+    target.includes("sobre-nosotros") ||
+    target.includes("sobrenosotros") ||
+    target.includes("about")
+  ) {
+    return "sobre_nosotros";
+  }
+
   return "";
-}
-
-function isStandaloneExamItem(item) {
-  const target = slugify(`${item.key || ""} ${item.label || ""} ${item.path || ""}`);
-
-  return item.pageType === "productos" && target.includes("examen");
-}
-
-function isExamPath(path) {
-  return path === "/examenes" || path.startsWith("/examenes/");
 }
 
 export function normalizeMenuItems(menu = []) {
@@ -238,21 +253,15 @@ export function normalizeMenuItems(menu = []) {
         path: isExternal ? href : normalizePath(href),
         isExternal,
       };
-    })
-    .filter((item) => !isStandaloneExamItem(item));
+    });
 }
 
 export function findActiveMenuItem(menuItems, currentPath) {
   const normalizedCurrentPath = normalizePath(currentPath);
   const homeItem = menuItems.find((item) => item.key === "inicio") || menuItems[0];
-  const servicesItem = menuItems.find((item) => item.pageType === "servicios");
 
   if (normalizedCurrentPath === "/") {
     return homeItem;
-  }
-
-  if (isExamPath(normalizedCurrentPath) && servicesItem) {
-    return servicesItem;
   }
 
   return (
@@ -264,6 +273,6 @@ export function findActiveMenuItem(menuItems, currentPath) {
         item.path !== "/" &&
         normalizedCurrentPath.startsWith(`${item.path}/`),
     ) ||
-    homeItem
+    null
   );
 }

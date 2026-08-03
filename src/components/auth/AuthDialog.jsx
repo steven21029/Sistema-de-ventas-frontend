@@ -1,4 +1,12 @@
-import { LockKeyhole, LogOut, Mail, ShieldCheck, UserRound, X } from "lucide-react";
+import {
+  LayoutDashboard,
+  LockKeyhole,
+  LogOut,
+  Mail,
+  ShieldCheck,
+  UserRound,
+  X,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { getApiErrorMessage } from "../../utils/apiError";
 import styles from "./AuthDialog.module.css";
@@ -11,11 +19,13 @@ function getUserName(session) {
 }
 
 function AuthDialog({
+  canAccessAdminPanel = false,
   isOpen,
   isRestoring = false,
   onClose,
   onLogin,
   onLogout,
+  onOpenAdminPanel,
   session,
 }) {
   const [email, setEmail] = useState("");
@@ -138,6 +148,17 @@ function AuthDialog({
               <div className={styles.feedback} role="alert">
                 {feedback}
               </div>
+            )}
+
+            {canAccessAdminPanel && (
+              <button
+                className={styles.adminButton}
+                type="button"
+                onClick={onOpenAdminPanel}
+              >
+                <LayoutDashboard size={19} aria-hidden="true" />
+                Ir al panel administrativo
+              </button>
             )}
 
             <button

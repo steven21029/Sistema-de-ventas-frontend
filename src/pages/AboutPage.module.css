@@ -1,0 +1,292 @@
+.page {
+  margin-top: 30px;
+  color: var(--color-ink);
+}
+
+.intro {
+  max-width: 900px;
+  padding: 34px 0 38px;
+}
+
+.intro > p,
+.story > p,
+.purposeGrid section > p,
+.values > div > p,
+.commitment > p {
+  margin: 0 0 8px;
+  color: var(--color-red-dark);
+  font-size: 12px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.intro h1 {
+  margin: 0;
+  color: var(--color-blue);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 54px;
+  font-weight: 500;
+  line-height: 1.04;
+}
+
+.intro > div {
+  max-width: 780px;
+  margin-top: 18px;
+  color: var(--color-muted);
+  font-size: 18px;
+  line-height: 1.7;
+  white-space: pre-line;
+}
+
+.imageBand {
+  width: 100%;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-soft);
+}
+
+.imageBand img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.story {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.75fr) minmax(0, 1.25fr);
+  gap: 24px 60px;
+  padding: 64px 0;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.story > p {
+  grid-column: 1;
+  align-self: end;
+}
+
+.story h2 {
+  grid-column: 1;
+  margin: 0;
+  color: var(--color-blue);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 36px;
+  font-weight: 500;
+  line-height: 1.15;
+}
+
+.story > div {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  color: var(--color-muted);
+  font-size: 16px;
+  line-height: 1.75;
+  white-space: pre-line;
+}
+
+.purposeGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-bottom: 1px solid var(--color-line);
+}
+
+.purposeGrid section {
+  position: relative;
+  min-height: 290px;
+  padding: 56px 48px 56px 0;
+}
+
+.purposeGrid section + section {
+  padding-right: 0;
+  padding-left: 48px;
+  border-left: 1px solid var(--color-line);
+}
+
+.purposeGrid section > span {
+  position: absolute;
+  top: 28px;
+  right: 30px;
+  color: color-mix(in srgb, var(--color-blue) 18%, transparent);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 58px;
+  line-height: 1;
+}
+
+.purposeGrid h2,
+.values h2 {
+  margin: 0 0 18px;
+  color: var(--color-blue);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 31px;
+  font-weight: 500;
+}
+
+.purposeGrid section > div {
+  position: relative;
+  max-width: 560px;
+  color: var(--color-muted);
+  font-size: 16px;
+  line-height: 1.7;
+  white-space: pre-line;
+}
+
+.values {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.7fr) minmax(0, 1.3fr);
+  gap: 40px;
+  padding: 58px 0;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.values ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.values li {
+  display: flex;
+  min-height: 46px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  color: var(--color-blue);
+  border-bottom: 1px solid var(--color-line);
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.values li svg {
+  flex: 0 0 auto;
+  color: var(--color-red-dark);
+}
+
+.commitment {
+  margin-top: 48px;
+  padding: 38px 42px;
+  border-left: 5px solid var(--color-red-dark);
+  background: var(--color-surface-soft);
+}
+
+.commitment > div {
+  max-width: 920px;
+  color: var(--color-blue);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 25px;
+  line-height: 1.45;
+  white-space: pre-line;
+}
+
+.statusBox {
+  display: grid;
+  min-height: 280px;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  margin-top: 30px;
+  padding: 30px;
+  color: var(--color-muted);
+  border: 1px dashed var(--color-line);
+  background: var(--color-surface-soft);
+  text-align: center;
+}
+
+.statusBox strong {
+  color: var(--color-blue);
+}
+
+.spin {
+  animation: spin 0.85s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 840px) {
+  .intro h1 {
+    font-size: 44px;
+  }
+
+  .story,
+  .values {
+    grid-template-columns: 1fr;
+  }
+
+  .story > p,
+  .story h2,
+  .story > div {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .purposeGrid section,
+  .purposeGrid section + section {
+    padding-inline: 28px;
+  }
+}
+
+@media (max-width: 620px) {
+  .page {
+    margin-top: 18px;
+  }
+
+  .intro {
+    padding: 24px 0 30px;
+  }
+
+  .intro h1 {
+    font-size: 38px;
+  }
+
+  .intro > div {
+    font-size: 16px;
+  }
+
+  .story {
+    padding: 42px 0;
+  }
+
+  .story h2 {
+    font-size: 30px;
+  }
+
+  .purposeGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .purposeGrid section,
+  .purposeGrid section + section {
+    min-height: auto;
+    padding: 42px 0;
+    border-left: 0;
+  }
+
+  .purposeGrid section + section {
+    border-top: 1px solid var(--color-line);
+  }
+
+  .values {
+    gap: 20px;
+    padding: 42px 0;
+  }
+
+  .values ul {
+    grid-template-columns: 1fr;
+  }
+
+  .commitment {
+    padding: 28px 24px;
+  }
+
+  .commitment > div {
+    font-size: 21px;
+  }
+}

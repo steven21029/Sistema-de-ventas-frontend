@@ -54,9 +54,13 @@ async function readResponse(response) {
 }
 
 async function performRequest(path, options = {}) {
+  const isFormData =
+    typeof FormData !== "undefined" && options.body instanceof FormData;
   const headers = {
     Accept: "application/json",
-    ...(options.body !== undefined ? { "Content-Type": "application/json" } : {}),
+    ...(options.body !== undefined && !isFormData
+      ? { "Content-Type": "application/json" }
+      : {}),
     ...(options.headers || {}),
   };
 
@@ -69,7 +73,12 @@ async function performRequest(path, options = {}) {
     cache: "no-store",
     credentials: options.credentials || (options.auth ? "include" : "same-origin"),
     headers,
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    body:
+      options.body !== undefined
+        ? isFormData
+          ? options.body
+          : JSON.stringify(options.body)
+        : undefined,
   });
   const payload = await readResponse(response);
 
@@ -171,6 +180,14 @@ export function apiPatch(path, body = {}, options = {}) {
   return request(path, {
     ...options,
     method: "PATCH",
+    body,
+  });
+}
+
+export function apiPut(path, body = {}, options = {}) {
+  return request(path, {
+    ...options,
+    method: "PUT",
     body,
   });
 }

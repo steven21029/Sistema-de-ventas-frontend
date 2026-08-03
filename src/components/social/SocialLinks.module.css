@@ -1,0 +1,67 @@
+.socialLinks {
+  display: grid;
+  gap: 11px;
+  padding-top: 18px;
+  border-top: 1px solid var(--color-line);
+}
+
+.socialLinks > span {
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.socialLinks > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.socialLinks a {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--color-blue) 24%, var(--color-line));
+  border-radius: 50%;
+  color: var(--color-blue);
+  background: var(--color-surface);
+  transition:
+    color 160ms ease,
+    background 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+.socialLinks a:hover {
+  color: white;
+  background: var(--color-red-dark);
+  border-color: var(--color-red-dark);
+  transform: translateY(-2px);
+}
+
+.socialLinks a:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--color-red-dark) 28%, transparent);
+  outline-offset: 3px;
+}
+
+.wide {
+  margin-top: 48px;
+  padding: 30px 0 4px;
+}
+
+.wide > span {
+  color: var(--color-red-dark);
+}
+
+.wide a {
+  width: 48px;
+  height: 48px;
+}
+
+@media (max-width: 620px) {
+  .wide {
+    margin-top: 36px;
+  }
+}

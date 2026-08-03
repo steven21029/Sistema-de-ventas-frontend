@@ -16,12 +16,13 @@ export const DEMO_EMPRESA = {
   productos_con_imagen: true,
   menu: [
     { clave: "inicio", texto: "Inicio", ruta: "/", orden: 1, activo: true },
-    { clave: "productos", texto: "Productos", ruta: "/productos", orden: 2, activo: true },
-    { clave: "paquetes", texto: "Paquetes", ruta: "/paquetes", orden: 3, activo: true },
+    { clave: "examenes", texto: "Examenes", ruta: "/examenes", orden: 2, activo: true },
+    { clave: "perfiles", texto: "Perfiles", ruta: "/perfiles", orden: 3, activo: true },
     { clave: "servicios", texto: "Servicios", ruta: "/servicios", orden: 4, activo: true },
     { clave: "promociones", texto: "Promociones", ruta: "/promociones", orden: 5, activo: true },
     { clave: "sucursales", texto: "Sucursales", ruta: "/sucursales", orden: 6, activo: true },
     { clave: "contacto", texto: "Contacto", ruta: "/contacto", orden: 7, activo: true },
+    { clave: "sobre_nosotros", texto: "Sobre nosotros", ruta: "/sobre-nosotros", orden: 8, activo: true },
   ],
 };
 

@@ -44,6 +44,12 @@ export async function getEmpresaMenu(empresaSlug) {
   return asArray(payload);
 }
 
+export function getSobreNosotros(empresaSlug) {
+  return apiGet("/empresas/sobre-nosotros/", {
+    empresa_slug: empresaSlug,
+  });
+}
+
 export async function getEmpresaActual() {
   const host = getFrontendHost();
   const slugOverride = getBrowserEmpresaSlugOverride();

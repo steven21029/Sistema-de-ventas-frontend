@@ -123,6 +123,7 @@
 }
 
 .loginButton,
+.adminButton,
 .logoutButton {
   min-height: 48px;
   display: inline-flex;
@@ -136,7 +137,18 @@
   font-weight: 900;
 }
 
+.adminButton {
+  border: 1px solid var(--color-blue);
+  color: white;
+  background: var(--color-blue);
+}
+
+.adminButton:hover {
+  filter: brightness(0.94);
+}
+
 .loginButton:disabled,
+.adminButton:disabled,
 .logoutButton:disabled {
   cursor: wait;
   opacity: 0.68;

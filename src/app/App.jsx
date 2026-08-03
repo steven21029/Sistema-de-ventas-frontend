@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import AuthDialog from "../components/auth/AuthDialog";
 import CartDrawer from "../components/cart/CartDrawer";
-import MenuPage from "../components/content/MenuPage";
 import FavoritesDrawer from "../components/favorites/FavoritesDrawer";
 import Header from "../components/layout/Header";
 import MainNav from "../components/layout/MainNav";
@@ -27,6 +26,7 @@ import {
 } from "../services/favoritosService";
 import { getBannersPromocionales } from "../services/promocionesService";
 import BranchesPage from "../pages/BranchesPage";
+import AboutPage from "../pages/AboutPage";
 import CheckoutPage from "../pages/CheckoutPage";
 import ContactPage from "../pages/ContactPage";
 import HomePage from "../pages/HomePage";
@@ -42,6 +42,12 @@ import styles from "./App.module.css";
 
 const LOCAL_EMPRESA_SLUG = import.meta.env.VITE_EMPRESA_SLUG || "";
 const CART_STORAGE_PREFIX = "ventas_cart_v1";
+const ADMIN_COMPANY_STORAGE_KEY = "ventas_admin_empresa_slug";
+const ADMINISTRATIVE_ROLES = new Set([
+  "administrador_maestro",
+  "administrador_empresa",
+  "gerente",
+]);
 
 function getCartStorageKey(empresaSlug) {
   return `${CART_STORAGE_PREFIX}:${String(empresaSlug).trim().toLowerCase()}`;
@@ -217,7 +223,7 @@ function getPackageOriginalPrice(item, finalPrice) {
 }
 
 function getPageKind(menuItem) {
-  return menuItem?.pageType || "inicio";
+  return menuItem?.pageType || "";
 }
 
 function getProductCatalogType(menuItem) {
@@ -754,6 +760,12 @@ function App() {
     const firstName = authSession?.usuario?.first_name?.trim();
     return firstName || "Mi cuenta";
   }, [authSession]);
+  const canAccessAdminPanel = useMemo(
+    () =>
+      authSession?.usuario?.is_superuser === true ||
+      ADMINISTRATIVE_ROLES.has(authSession?.perfil?.rol),
+    [authSession],
+  );
 
   function applyServerCart(payload) {
     setServerCartId(payload?.id || null);
@@ -1020,10 +1032,32 @@ function App() {
 
   async function handleLogin(email, password) {
     const session = await loginUsuario(email, password);
+
+    if (
+      session?.usuario?.is_superuser === true ||
+      ADMINISTRATIVE_ROLES.has(session?.perfil?.rol)
+    ) {
+      if (empresaSlug) {
+        window.localStorage.setItem(ADMIN_COMPANY_STORAGE_KEY, empresaSlug);
+      }
+    }
+
     setAuthSession({
       perfil: session.perfil,
       usuario: session.usuario,
     });
+  }
+
+  function handleOpenAdminPanel() {
+    if (!canAccessAdminPanel) {
+      return;
+    }
+
+    if (empresaSlug) {
+      window.localStorage.setItem(ADMIN_COMPANY_STORAGE_KEY, empresaSlug);
+    }
+
+    window.location.assign("/administracion");
   }
 
   async function handleLogout() {
@@ -1315,6 +1349,14 @@ function App() {
         );
       case "contacto":
         return <ContactPage empresa={empresa} empresaSlug={empresaSlug} title={pageTitle} />;
+      case "sobre_nosotros":
+        return (
+          <AboutPage
+            empresa={empresa}
+            empresaSlug={empresaSlug}
+            title={pageTitle}
+          />
+        );
       case "inicio":
         return (
           <HomePage
@@ -1331,7 +1373,15 @@ function App() {
           />
         );
       default:
-        return <MenuPage empresa={empresa} item={activeMenuItem} />;
+        return (
+          <section className={styles.purchaseAccess}>
+            <p>Navegacion</p>
+            <h1>Pagina no disponible</h1>
+            <button type="button" onClick={handleBrandNavigation}>
+              Volver al inicio
+            </button>
+          </section>
+        );
     }
   }
 
@@ -1406,11 +1456,13 @@ function App() {
       />
 
       <AuthDialog
+        canAccessAdminPanel={canAccessAdminPanel}
         isOpen={authOpen}
         isRestoring={isAuthRestoring}
         onClose={() => setAuthOpen(false)}
         onLogin={handleLogin}
         onLogout={handleLogout}
+        onOpenAdminPanel={handleOpenAdminPanel}
         session={authSession}
       />
     </div>

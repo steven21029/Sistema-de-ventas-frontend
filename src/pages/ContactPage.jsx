@@ -1,5 +1,6 @@
 import { Mail, Phone, Send } from "lucide-react";
 import { useState } from "react";
+import SocialLinks from "../components/social/SocialLinks";
 import { enviarMensajeContacto } from "../services/paginasService";
 import styles from "./DynamicPages.module.css";
 
@@ -67,6 +68,10 @@ function ContactPage({ empresa, empresaSlug, title }) {
       <div className={styles.contactLayout}>
         <aside className={styles.contactPanel}>
           <h2>{empresa?.nombre || "Contacto"}</h2>
+          <SocialLinks
+            label="Encuentranos en redes"
+            links={empresa?.redes_sociales}
+          />
           {empresa?.telefono && (
             <p>
               <Phone size={17} aria-hidden="true" /> {empresa.telefono}
