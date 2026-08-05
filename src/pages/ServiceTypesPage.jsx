@@ -33,6 +33,22 @@ function getServiceKey(service) {
   return service.clave || slugify(service.nombre);
 }
 
+function hasExamWord(value) {
+  return slugify(value)
+    .split("-")
+    .some((part) => part === "examen" || part === "examenes");
+}
+
+function isExamService(service) {
+  return [
+    service?.clave,
+    service?.nombre,
+    service?.titulo,
+    service?.ruta,
+    getServiceKey(service),
+  ].some(hasExamWord);
+}
+
 function getItemName(item) {
   return typeof item === "string" ? item : item?.nombre || item?.titulo || item?.clave || "";
 }
@@ -88,6 +104,10 @@ function ServiceTypesPage({
   const empresaSlugRef = useRef(empresaSlug);
   const normalizedSearch = useMemo(() => normalizeSearchText(searchQuery), [searchQuery]);
   const isSearching = Boolean(normalizedSearch);
+  const serviceItems = useMemo(
+    () => items.filter((item) => !isExamService(item)),
+    [items],
+  );
 
   useEffect(() => {
     empresaSlugRef.current = empresaSlug;
@@ -135,11 +155,11 @@ function ServiceTypesPage({
   }, [empresaSlug]);
 
   useEffect(() => {
-    if (!empresaSlug || !isSearching || items.length === 0) {
+    if (!empresaSlug || !isSearching || serviceItems.length === 0) {
       return;
     }
 
-    const servicesToLoad = items.filter((service) => {
+    const servicesToLoad = serviceItems.filter((service) => {
       const serviceKey = getServiceKey(service);
 
       return (
@@ -226,13 +246,13 @@ function ServiceTypesPage({
     detailsByKey,
     empresaSlug,
     isSearching,
-    items,
     loadingDetails,
+    serviceItems,
   ]);
 
   const serviceViews = useMemo(
     () =>
-      items.map((item) => {
+      serviceItems.map((item) => {
         const serviceKey = getServiceKey(item);
         const summaryCategories = sortByOrder(asList(item.categorias));
         const detail = detailsByKey[serviceKey];
@@ -267,7 +287,7 @@ function ServiceTypesPage({
           serviceKey,
         };
       }),
-    [detailsByKey, isSearching, items, normalizedSearch],
+    [detailsByKey, isSearching, normalizedSearch, serviceItems],
   );
   const visibleServiceViews = useMemo(
     () =>
@@ -286,7 +306,7 @@ function ServiceTypesPage({
   );
   const isSearchLoading =
     isSearching &&
-    items.some((service) => {
+    serviceItems.some((service) => {
       const serviceKey = getServiceKey(service);
 
       return (
@@ -333,6 +353,7 @@ function ServiceTypesPage({
 
     if (
       !empresaSlug ||
+      isExamService(service) ||
       hasOwnDetail(detailsByKey, serviceKey) ||
       loadingDetails[serviceKey]
     ) {
@@ -385,9 +406,9 @@ function ServiceTypesPage({
           <span className={styles.count}>
             {isLoading || isSearchLoading
               ? "Buscando productos"
-              : isSearching
-                ? `${matchingProductCount} productos encontrados`
-                : `${items.length} familias`}
+                : isSearching
+                  ? `${matchingProductCount} productos encontrados`
+                  : `${serviceItems.length} familias`}
           </span>
         </div>
       </div>

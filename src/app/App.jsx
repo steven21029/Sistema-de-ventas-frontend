@@ -8,7 +8,10 @@ import { DEMO_BANNERS, DEMO_EMPRESA } from "../config/demoContent";
 import {
   loginUsuario,
   logoutUsuario,
+  reenviarVerificacion,
+  registrarComprador,
   restoreUsuarioSession,
+  verificarCorreo,
 } from "../services/authService";
 import { setApiUnauthorizedHandler } from "../services/apiClient";
 import {
@@ -1048,6 +1051,18 @@ function App() {
     });
   }
 
+  async function handleRegisterBuyer(formData) {
+    return registrarComprador(formData);
+  }
+
+  async function handleVerifyBuyerEmail(email, codigo) {
+    return verificarCorreo(email, codigo);
+  }
+
+  async function handleResendBuyerVerification(email) {
+    return reenviarVerificacion(email);
+  }
+
   function handleOpenAdminPanel() {
     if (!canAccessAdminPanel) {
       return;
@@ -1457,12 +1472,16 @@ function App() {
 
       <AuthDialog
         canAccessAdminPanel={canAccessAdminPanel}
+        empresaSlug={empresaSlug}
         isOpen={authOpen}
         isRestoring={isAuthRestoring}
         onClose={() => setAuthOpen(false)}
         onLogin={handleLogin}
         onLogout={handleLogout}
         onOpenAdminPanel={handleOpenAdminPanel}
+        onRegister={handleRegisterBuyer}
+        onResendVerification={handleResendBuyerVerification}
+        onVerifyEmail={handleVerifyBuyerEmail}
         session={authSession}
       />
     </div>

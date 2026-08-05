@@ -1165,3 +1165,89 @@ Migracion y pruebas:
   `empresas.0016_empresa_facebook_url_empresa_instagram_url_and_more`.
 - `python manage.py test empresas`: 47 pruebas aprobadas.
 - `python manage.py test`: 151 pruebas aprobadas.
+
+## 2026-08-05 - Registro de comprador desde Mi cuenta
+
+Estado: implementado en frontend y compilado.
+
+Cambios:
+
+- El modal publico de Mi cuenta ahora permite cambiar entre iniciar sesion,
+  crear cuenta y activar cuenta.
+- El formulario de registro solicita nombre completo, correo, telefono,
+  numero de identidad, contrasena, confirmacion y aceptaciones legales.
+- El registro usa `POST /api/usuarios/registro-comprador/`.
+- La verificacion usa `POST /api/usuarios/verificar-correo/`.
+- El reenvio usa `POST /api/usuarios/reenviar-verificacion/`.
+- El frontend no envia ningun campo de rol; las cuentas creadas por este flujo
+  quedan sujetas al contrato publico de comprador del backend.
+- Al crear la cuenta, la interfaz pasa automaticamente a pedir el codigo.
+- Al verificar correctamente, vuelve al login con el correo precargado.
+
+Archivos modificados:
+
+- `src/services/authService.js`.
+- `src/components/auth/AuthDialog.jsx`.
+- `src/components/auth/AuthDialog.module.css`.
+- `src/app/App.jsx`.
+- `.gitignore`.
+- `CONTEXTO_CONTINUACION.md`.
+- `REGISTRO_CAMBIOS_CONTINUOS.md`.
+
+Verificacion:
+
+- `npm ci --cache .\.npm-cache --no-audit`: correcto con acceso a red.
+- `npm run build`: correcto.
+- Servidor local Vite iniciado y disponible en `http://127.0.0.1:5173/`.
+
+## 2026-08-05 - Base versionada de API y endpoint de Examenes
+
+Estado: implementado en frontend.
+
+Cambios:
+
+- La base predeterminada del cliente HTTP cambio de `/api` a `/api/v1`.
+- La pagina Examenes conserva el endpoint dedicado
+  `GET /api/v1/catalogo/examenes/?empresa_slug=Analiza`.
+- La pagina Servicios conserva el listado general
+  `GET /api/v1/catalogo/servicios/?empresa_slug=Analiza`.
+- El detalle de servicios queda limitado a ramas especificas mediante
+  `GET /api/v1/catalogo/servicios/detalle/?empresa_slug=Analiza&servicio=...`.
+- No se usa `servicios/detalle` como fuente de la pagina Examenes.
+
+Archivo modificado:
+
+- `src/services/apiClient.js`.
+- `CONTEXTO_CONTINUACION.md`.
+- `REGISTRO_CAMBIOS_CONTINUOS.md`.
+
+## 2026-08-05 - Servicios excluye la rama oficial Examenes
+
+Estado: implementado en frontend y compilado.
+
+Motivo:
+
+- La pagina Servicios podia intentar cargar el detalle de la familia
+  `Examenes` mediante `servicios/detalle`, especialmente durante busquedas.
+- Ese catalogo debe vivir solo en la pagina Examenes mediante el endpoint
+  dedicado `GET /api/v1/catalogo/examenes/?empresa_slug=Analiza`.
+
+Cambios:
+
+- `ServiceTypesPage` filtra la familia oficial `Examenes` del listado visual de
+  Servicios.
+- `ServiceTypesPage` tambien bloquea defensivamente `loadDetail` para esa
+  familia, evitando llamadas a
+  `/api/v1/catalogo/servicios/detalle/?servicio=examenes`.
+- Las ramas especificas de servicios, como `imagenes`, siguen usando
+  `servicios/detalle`.
+
+Archivo modificado:
+
+- `src/pages/ServiceTypesPage.jsx`.
+- `CONTEXTO_CONTINUACION.md`.
+- `REGISTRO_CAMBIOS_CONTINUOS.md`.
+
+Verificacion:
+
+- `npm run build`: correcto.

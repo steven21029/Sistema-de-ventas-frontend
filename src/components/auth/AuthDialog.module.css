@@ -17,7 +17,9 @@
 .dialog {
   position: relative;
   z-index: 1;
-  width: min(440px, 100%);
+  width: min(520px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
   padding: 34px;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-md);
@@ -86,6 +88,16 @@
 .form {
   display: grid;
   gap: 15px;
+}
+
+.registerForm {
+  gap: 13px;
+}
+
+.fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 13px;
 }
 
 .form label {
@@ -163,6 +175,71 @@
   line-height: 1.4;
 }
 
+.feedbackSuccess {
+  border-left-color: #247a52;
+  background: rgba(36, 122, 82, 0.1);
+}
+
+.secondaryPanel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-line);
+  color: var(--color-muted);
+  font-size: 14px;
+}
+
+.secondaryPanel button,
+.textButton {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  color: var(--color-blue);
+  background: white;
+  font-weight: 900;
+}
+
+.secondaryPanel button {
+  padding: 0 14px;
+}
+
+.actionsRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.textButton {
+  padding: 0 12px;
+}
+
+.textButton:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
+.checkboxField {
+  display: flex !important;
+  align-items: flex-start;
+  gap: 10px !important;
+  color: var(--color-ink) !important;
+  font-weight: 700 !important;
+  line-height: 1.35;
+}
+
+.checkboxField input {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  margin: 1px 0 0;
+  accent-color: var(--color-red-dark);
+}
+
 .accountView {
   display: grid;
   gap: 20px;
@@ -219,8 +296,23 @@
 
   .dialog {
     width: 100%;
+    max-height: calc(100vh - 18px);
     padding: 28px 20px 22px;
     border-radius: var(--radius-md) var(--radius-md) 0 0;
+  }
+
+  .fieldGrid,
+  .actionsRow {
+    grid-template-columns: 1fr;
+  }
+
+  .secondaryPanel {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .secondaryPanel button {
+    width: 100%;
   }
 
   .loginHeading h2,

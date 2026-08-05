@@ -1,6 +1,9 @@
 # Contrato API del panel administrativo
 
 Estado: implementado en backend Django y verificado el 3 de agosto de 2026.
+Actualizacion frontend 2026-08-05: el cliente React consume la API con base
+versionada `/api/v1`. Cualquier ejemplo historico escrito como `/api/...` debe
+leerse en frontend como `/api/v1/...`.
 
 Este documento es el contrato oficial para implementar el panel React. Las
 rutas publicas existentes se conservan. Todas las rutas indicadas empiezan con

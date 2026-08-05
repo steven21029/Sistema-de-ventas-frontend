@@ -1,786 +1,550 @@
-# Contexto de continuacion - Sistema de ventas multiempresa
+# Contexto maestro del frontend - Sistema de ventas multiempresa
 
-Fecha del estado: 2026-07-31
+Fecha de auditoria: 2026-08-05
 
-Este documento resume el estado real del proyecto para continuar el trabajo en
-otra computadora o en una conversacion nueva. El codigo actual y el registro de
-cambios mas reciente del backend tienen prioridad sobre documentos antiguos.
+Codigo auditado: rama `main`, commit `8c1ad60` (`cambio de pantalla`).
 
-## 1. Lectura recomendada para continuar
+Este es el documento principal para conocer el estado del frontend: que existe,
+que funciona, que esta parcial y que falta. Se reviso contra el codigo vigente
+de `src/`, la configuracion de Vite/Vercel y los contratos locales disponibles.
 
-Leer en este orden:
+## 1. Como usar este documento
 
-1. Este archivo.
-2. `backend/docs/REGISTRO_CAMBIOS_CONTINUOS.md`.
-3. `frontend/src/app/App.jsx`.
-4. Los servicios de `frontend/src/services/` relacionados con la tarea.
-5. La pagina o componente que se vaya a modificar.
+Orden recomendado antes de modificar el proyecto:
 
-Regla de precedencia:
+1. Leer este archivo.
+2. Revisar `REGISTRO_CAMBIOS_CONTINUOS.md` para cambios posteriores.
+3. Si la tarea toca administracion, consultar `API_PANEL_ADMINISTRATIVO.md`.
+4. Revisar `src/app/App.jsx` o `src/admin/AdminApp.jsx`, segun el area.
+5. Revisar el servicio, pagina y componente que se vaya a cambiar.
 
-- El codigo vigente gana sobre una nota antigua.
-- El cambio con fecha mas reciente gana sobre un contrato anterior.
-- `frontend/BRIEF_FRONTEND.md` es una copia antigua del 22 de julio y no debe
-  usarse para recuperar endpoints retirados del carrito.
-- `backend/docs/REGISTRO_CAMBIOS_CONTINUOS.md` es el registro mas reciente, pero
-  debe revisarse antes de publicarlo porque contiene notas locales de desarrollo.
+Reglas de precedencia:
 
-## 2. Advertencia critica antes de cambiar de computadora
+- El codigo vigente tiene prioridad sobre cualquier documento.
+- El cambio con fecha mas reciente tiene prioridad sobre una nota anterior.
+- Este archivo reemplaza a `BRIEF_FRONTEND.md` como resumen del estado actual.
+- `BRIEF_FRONTEND.md` conserva contexto historico, pero contiene contratos
+  antiguos y no debe usarse para recuperar endpoints retirados.
+- No copiar secretos ni valores reales de `.env` a la documentacion.
 
-Los dos repositorios tienen muchos cambios locales que todavia no estan en
-GitHub. Clonar ahora desde GitHub no recuperaria el estado descrito aqui.
+## 2. Resumen ejecutivo: que va y que falta
 
-Frontend:
+| Area | Estado | Que existe | Que falta o debe verificarse |
+| --- | --- | --- | --- |
+| Tienda publica multiempresa | Implementado | Empresa por dominio, subdominio, query o slug local; marca, colores, menu y reglas comerciales dinamicas | Pruebas integrales con al menos dos empresas y dominios reales |
+| Inicio y catalogo | Implementado | Banners, combos, mas vendidos, productos, examenes, perfiles, servicios y busqueda contextual | Pruebas visuales completas y estados extremos con catalogos grandes |
+| Promociones, sucursales y contacto | Implementado | Ofertas, ubicaciones, Google Maps, redes sociales y formulario de contacto | Validar URLs, accesibilidad y flujo con datos reales de cada empresa |
+| Sobre nosotros | Implementado | Plantilla publica y editor administrativo por empresa | Validar contenido e imagen final de cada empresa |
+| Inicio y cierre de sesion | Implementado | JWT, access token en memoria, refresh `HttpOnly`, restauracion y logout | Pruebas automatizadas de expiracion y concurrencia de requests |
+| Registro y recuperacion | Parcial | Registro de comprador, verificacion de correo y reenvio de codigo desde Mi cuenta | Crear recuperacion de contrasena y pruebas E2E del alta de cuenta |
+| Favoritos | Implementado | Persistencia por usuario/empresa y paso al carrito | Pruebas de cambio de empresa, articulo inactivo y sesion expirada |
+| Carrito | Parcial | Invitado en `localStorage`, autenticado en backend, calculo de precios e inventario | Resolver y verificar definitivamente la fusion invitado -> usuario |
+| Checkout y pedidos | Implementado con pendientes | Retiro, envio local/nacional, pedido congelado y reintento de pago | Tarifa real de envio, QA de errores y portal del comprador |
+| Pagos | Parcial | Inicio, consulta, sondeo de estado y reintento | Integrar proveedor real, redireccion automatica y validar webhooks de extremo a extremo |
+| Panel administrativo | Implementado | Dashboard y gestion de catalogo, promociones, usuarios, empresa, inventario y contenido | QA por rol, filtros avanzados, reportes, exportaciones y automatizacion de pruebas |
+| Despliegue | Configurado, no cerrado | Vercel para frontend, Render para API/media y fallback SPA | Validar produccion, dominios, HTTPS, cookies, CORS/CSRF, correo, almacenamiento y monitoreo |
+| Calidad automatizada | Pendiente | `npm run build` funciona | No hay scripts de test, lint ni pruebas E2E |
 
-- Repositorio: `https://github.com/steven21029/Sistema-de-ventas-frontend.git`
-- Rama actual: `main`.
-- Ultimo commit visible: `9c8cc99 pagina de servicio con cards`.
-- Hay archivos modificados, eliminados y nuevos sin commit.
+Lectura corta del estado:
 
-Backend:
+- La tienda publica ya cubre el recorrido principal desde catalogo hasta crear
+  pedido y consultar un intento de pago.
+- El panel administrativo React ya existe y esta conectado a las APIs; esta es
+  la diferencia mas importante respecto a la version anterior de este archivo.
+- Los bloqueos principales para cerrar el producto son autenticacion completa
+  del comprador, fusion confiable del carrito, pago real, pruebas y produccion.
 
-- Repositorio: `https://github.com/steven21029/Sistema-de-ventas-backend.git`
-- Rama actual: `main`.
-- Ultimo commit visible: `c0892bc imagen en las cards de sucursales y que sea una sola para todas desde empreza`.
-- Hay cambios de catalogo, empresas, favoritos, pedidos, promociones, usuarios,
-  pagos, migraciones y documentacion sin commit.
+## 3. Objetivo y alcance del frontend
 
-Antes de moverse a otra PC se deben revisar, confirmar, hacer commit y subir los
-cambios de ambos repositorios por separado.
+Aplicacion web de ventas multiempresa. Una sola base React sirve a diferentes
+empresas y Django determina el contexto visible y permitido.
 
-No se deben subir estos archivos o carpetas sensibles/locales del backend:
+Cada empresa puede controlar desde el backend:
 
-- `.env`
-- `db.sqlite3`
-- `media/`
-- `.venv/`
-
-Estos elementos estan ignorados por Git. Si se necesita conservar exactamente
-la base de prueba y sus imagenes, se deben copiar de forma privada o crear un
-respaldo separado. Nunca se deben publicar credenciales locales.
-
-En el frontend tambien estan ignorados intencionalmente:
-
-- `.agents/`
-- `skills-lock.json`
-- `node_modules/`
-- `dist/`
-
-## 3. Objetivo del producto
-
-Tienda web de ventas multiempresa. Cada empresa comparte la misma aplicacion,
-pero controla desde Django:
-
-- nombre y slug;
-- logo;
-- colores;
-- menu y nombres de paginas;
-- catalogo;
-- familias, categorias y productos;
+- nombre, slug, dominio, logo y datos de contacto;
+- colores del sitio;
+- redes sociales;
+- texto, orden y estado de los modulos oficiales del menu;
+- familias, categorias, productos y servicios;
 - perfiles y combos;
-- banners y ofertas;
-- sucursales y datos de contacto;
-- uso de imagenes individuales;
-- aplicacion de impuesto;
-- disponibilidad de envios.
+- banners, ofertas y descuentos;
+- sucursales y contenido de Sobre nosotros;
+- uso de imagenes de producto;
+- impuesto, envios y modo de inventario.
 
-La interfaz esta orientada a vender productos y servicios. Debe ser visual,
-clara, atractiva y rapida para comprar; no debe sentirse como un panel
-administrativo ni como una pagina de lectura.
+El frontend tiene dos superficies:
 
-## 4. Tecnologias actuales
+1. Tienda publica para compradores.
+2. Panel administrativo para personal autorizado.
 
-Frontend:
+## 4. Tecnologias y arquitectura actual
 
 - Vite 5.
 - React 18.
-- JavaScript, sin TypeScript.
-- CSS Modules y CSS global para tokens/base.
+- JavaScript con modulos ES; no usa TypeScript.
+- CSS Modules y estilos globales para tokens, base y utilidades.
 - `lucide-react` para iconos.
-- Sin React Router; la navegacion SPA se controla con `history.pushState`,
-  `popstate` y utilidades propias.
+- No usa React Router.
+- La navegacion SPA usa `history.pushState`, `popstate` y utilidades propias.
+- El cliente HTTP usa `fetch` mediante `src/services/apiClient.js`.
+- No hay libreria de estado global; `App.jsx` y `AdminApp.jsx` coordinan el
+  estado con hooks de React.
+- No hay framework de formularios, cache de servidor ni suite de pruebas.
 
-Backend:
-
-- Django 5.2.
-- Django REST Framework.
-- SimpleJWT.
-- SQLite en desarrollo local.
-- Preparado para PostgreSQL/Supabase en el futuro.
-- Pillow para imagenes.
-
-## 5. Estructura local
+Punto de entrada:
 
 ```text
-sistema de Ventas/
-|-- backend/
-|   |-- catalogo/
-|   |-- contacto/
-|   |-- empresas/
-|   |-- favoritos/
-|   |-- inventario/
-|   |-- pagos/
-|   |-- pedidos/
-|   |-- promociones/
-|   |-- usuarios/
-|   |-- config/
-|   |-- docs/
-|   |-- media/                 # ignorado por Git
-|   |-- db.sqlite3             # ignorado por Git
-|   |-- .env                   # ignorado por Git
-|   `-- manage.py
-`-- frontend/
-    |-- public/demo/           # imagenes neutrales sin backend
-    |-- src/app/
-    |-- src/components/
-    |-- src/config/
-    |-- src/pages/
-    |-- src/services/
-    |-- src/styles/
-    |-- src/utils/
-    `-- vite.config.js
+src/main.jsx
+|-- /administracion... -> AdminApp
+`-- cualquier otra ruta -> App (tienda publica)
 ```
 
-## 6. Puesta en marcha en Windows
+## 5. Ejecucion local y compilacion
 
-### Backend
+Instalar y ejecutar:
 
 ```powershell
-cd backend
-py -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-Copy-Item .env.example .env
-python manage.py migrate
-python manage.py runserver 127.0.0.1:8000
-```
-
-La API local queda en:
-
-```text
-http://127.0.0.1:8000/api/
-```
-
-No copiar secretos a este documento. Configurar el `.env` de forma privada.
-
-### Frontend
-
-```powershell
-cd frontend
 npm ci
 npm run dev
 ```
 
-La aplicacion queda normalmente en:
+URL local normal:
 
 ```text
 http://127.0.0.1:5173/
 ```
 
-Si PowerShell no reconoce `npm` despues de instalar Node, cerrar y abrir la
-terminal. Como reparacion temporal de la sesion:
+Compilacion y previsualizacion:
 
 ```powershell
-$env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User')
+npm run build
+npm run preview
 ```
 
-`vite.config.js` envia `/api` y `/media` a `http://127.0.0.1:8000`. El cliente
-usa `/api` por defecto, por lo que no es obligatorio crear un `.env` del
-frontend en desarrollo local.
+`vite.config.js` envia estas rutas al backend local en
+`http://127.0.0.1:8000`:
 
-Variables opcionales:
+```text
+/api/*
+/media/*
+```
+
+Variables admitidas por el codigo:
 
 ```env
-VITE_API_URL=/api
-VITE_EMPRESA_SLUG=Analiza
-VITE_FRONTEND_HOST=analiza.localhost:5173
+VITE_API_URL=/api/v1
+VITE_API_BASE_URL=/api/v1
+VITE_EMPRESA_SLUG=slug-local
+VITE_FRONTEND_HOST=empresa.localhost:5173
 ```
 
-Es preferible mantener `VITE_API_URL=/api` durante desarrollo para aprovechar
-el proxy y las cookies de sesion.
+El cliente HTTP usa por defecto `/api/v1`. `VITE_API_URL` tiene prioridad sobre
+`VITE_API_BASE_URL`; si se definen manualmente, deben apuntar a la base
+versionada, por ejemplo `/api/v1`, para usar el proxy y conservar
+correctamente las cookies.
 
-## 7. Resolucion multiempresa
+No existe `.env.example` en el frontend. Crearlo es un pendiente de
+documentacion/configuracion antes de incorporar mas variables.
 
-Archivo principal: `src/services/empresaService.js`.
+## 6. Rutas y navegacion
 
-Orden actual de resolucion:
+### Tienda publica
 
-1. Query string: `empresa_slug`, `slug` o `empresa`.
-2. Slug recordado en `localStorage` bajo `ventas_empresa_slug`.
-3. Dominio o subdominio actual mediante `host` y `X-Frontend-Host`.
-4. `VITE_EMPRESA_SLUG` como respaldo local.
-
-Para probar Analiza localmente:
+Rutas oficiales configuradas como respaldo:
 
 ```text
-http://127.0.0.1:5173/?empresa_slug=Analiza
+/                 Inicio
+/examenes         Catalogo de examenes/productos
+/perfiles         Perfiles o paquetes
+/servicios        Familias -> categorias -> productos
+/promociones      Ofertas
+/sucursales       Sucursales
+/contacto         Contacto
+/sobre-nosotros   Contenido institucional
 ```
 
-Para probar otra empresa:
+El texto, orden y estado visible de estas opciones provienen del backend. Las
+rutas externas tambien son admitidas por las utilidades del menu.
 
-```text
-http://127.0.0.1:5173/?empresa_slug=SLUG_DE_LA_EMPRESA
-```
-
-El valor queda recordado. Para dejar de forzar una empresa:
-
-```js
-localStorage.removeItem("ventas_empresa_slug")
-```
-
-Endpoint principal:
-
-```text
-GET /api/empresas/actual/?slug=Analiza
-GET /api/empresas/actual/?host=analiza.localhost:5173
-```
-
-El frontend usa de la empresa, entre otros:
-
-- `nombre`
-- `slug`
-- `logo`
-- `color_principal`
-- `color_secundario`
-- `color_acento`
-- `color_texto`
-- `color_fondo`
-- `menu`
-- `telefono`
-- `correo`
-- `direccion`
-- `cobra_impuesto`
-- `tiene_envios`
-- `productos_con_imagen`
-- `modo_inventario`
-
-No debe aparecer el nombre, logo ni color de Analiza como respaldo de otra
-empresa. Si el backend falla se usan recursos neutrales de `public/demo/`.
-
-## 8. Tema, logo e imagenes
-
-El tema se construye en `src/app/App.jsx` con variables CSS:
-
-```text
---color-ink       <- color_texto
---color-surface   <- color_fondo
---color-red-dark  <- color_principal
---color-red-light <- color_secundario
---color-blue      <- color_acento
-```
-
-Reglas de imagen:
-
-- Usar siempre `imagen_final` cuando exista.
-- Una URL externa tiene prioridad en el backend sobre un archivo local.
-- No crear logos alternativos de Analiza en el frontend.
-- Si el logo falla, mostrar una marca textual neutral de la empresa actual.
-- No introducir imagenes que parezcan generadas por IA como contenido real.
-- Los placeholders neutrales entregados por el usuario estan en `public/demo/`.
-
-Medidas y comportamiento actuales:
-
-- Banner recomendado: `1920 x 540`, proporcion aproximada `3.55:1`.
-- El carrusel usa `object-fit: cover` y altura responsiva.
-- Logo ancho de escritorio: `clamp(390px, 29vw, 460px)` y `146px` de alto.
-- El header detecta logos de lienzo cuadrado y aplica otro recorte/tamano.
-- Imagen de producto compacta: relacion `1:1`; se recomienda entregar una
-  imagen cuadrada, por ejemplo `1200 x 1200`.
-- Imagen de examen mini: contenedor `5:6`.
-- Imagen de sucursal en escritorio: `140 x 140`; en movil: `94 x 94`.
-
-El ancho general usa:
-
-```css
---page-max: clamp(1120px, 88vw, 1440px);
-```
-
-## 9. Menu y navegacion
-
-El menu no esta escrito de forma fija para cada empresa. Se carga desde:
-
-```text
-GET /api/empresas/menu/?empresa_slug=Analiza
-```
-
-Campos usados:
-
-- `clave`
-- `texto`
-- `ruta`
-- `orden`
-- `activo`
-- `abre_en_nueva_pestana`
-- opcionalmente `tipo_pagina` o un alias equivalente
-
-Rutas internas comienzan con `/`. Enlaces externos comienzan con `http://` o
-`https://`. Los externos pueden abrirse en otra pestana.
-
-`src/utils/menu.js` traduce claves, nombres y rutas a tipos genericos de pagina.
-Los nombres visibles siempre vienen del backend.
-
-Decision vigente sobre Examenes:
-
-- Examenes no debe duplicar la misma informacion de Servicios.
-- Si existe la pagina Servicios, el item independiente de Examenes se filtra
-  del menu.
-- `/examenes` se considera parte de Servicios.
-- Servicios presenta familia -> categoria -> producto.
-
-## 10. Buscador unico
-
-Solo se usa el buscador grande del header. No deben agregarse buscadores
-duplicados dentro de cada pagina.
-
-Comportamiento por pagina:
-
-- Inicio: busca combos y productos mas vendidos.
-- Productos/Examenes: busca productos del listado actual.
-- Perfiles/Paquetes: busca paquetes.
-- Servicios: busca por nombre de producto dentro de las familias y categorias.
-- Promociones: busca ofertas y productos relacionados.
-- Sucursales: busca sucursales.
-- Contacto: el buscador se oculta.
-- Checkout y Pago: el buscador se oculta.
-
-La busqueda tiene una espera de `320ms` antes de aplicarse.
-
-## 11. Paginas publicas implementadas
-
-### Inicio
-
-Archivo: `src/pages/HomePage.jsx`.
-
-- Carrusel de banners solo cuando hay banners activos con `imagen_final`.
-- Si el endpoint devuelve una lista vacia, el carrusel desaparece y el
-  contenido sube.
-- El carrusel cambia con slide cada 6 segundos.
-- Se pausa con hover o foco.
-- Cada imagen completa es clickeable y usa su propia `url_boton`.
-- Soporta rutas internas y URLs externas.
-- Los banners se recargan al enfocar la ventana, al volver a verla y cada 30
-  segundos para reflejar activacion/desactivacion del backend.
-- Seccion Combos solo aparece cuando existen combos activos.
-- Seccion Mas vendidos muestra como maximo 10 productos.
-- Mas vendidos usa una cuadricula de 3 columnas en escritorio, 2 en pantalla
-  intermedia y 1 en movil.
-- La antigua seccion de categorias del inicio fue retirada.
-
-Endpoints:
-
-```text
-GET /api/promociones/banners/?empresa_slug=SLUG
-GET /api/catalogo/combos-destacados/?empresa_slug=SLUG
-GET /api/catalogo/productos-mas-vendidos/?empresa_slug=SLUG
-```
-
-### Productos
-
-Archivo: `src/pages/ProductListPage.jsx`.
-
-- Consume productos o examenes segun el tipo inferido del menu.
-- Titulo visible dinamico desde el menu.
-- Tarjetas con nombre, descripcion del backend, precio, disponibilidad,
-  favoritos y agregar al carrito.
-- No usa iconos inventados por el frontend para categorias.
-- No muestra el antiguo recuadro redundante `FAMILIA - Examenes`.
-- Respeta `productos_con_imagen`; si es falso no reserva espacio de imagen.
-
-Endpoints:
-
-```text
-GET /api/catalogo/productos/?empresa_slug=SLUG&buscar=TEXTO
-GET /api/catalogo/examenes/?empresa_slug=SLUG&buscar=TEXTO
-```
-
-### Perfiles, paquetes y combos
-
-Archivo: `src/pages/PackageListPage.jsx`.
-
-- La pagina generica toma su nombre del menu.
-- Perfiles y combos son paquetes vendibles con precio independiente.
-- Pueden incluir varios productos.
-- No reciben el descuento promocional de productos simples.
-- Conservan sus propias imagenes aunque la empresa desactive imagenes de
-  productos individuales.
-
-Endpoint principal actual:
-
-```text
-GET /api/catalogo/perfiles/?empresa_slug=SLUG&buscar=TEXTO
-```
-
-### Servicios
-
-Archivo: `src/pages/ServiceTypesPage.jsx`.
-
-- No abre una subpagina por familia.
-- Usa acordeones en la misma pagina.
-- Primer nivel: familias de servicios.
-- Segundo nivel: categorias, tambien cerradas por defecto.
-- Tercer nivel: productos vendibles en tarjetas compactas.
-- Toda la cabecera de familia y categoria es interactiva.
-- La busqueda se hace por nombre de producto; carga los detalles necesarios y
-  abre las coincidencias.
-- Familias y categorias usan su propio `imagen_final`.
-- Las tarjetas principales de familia tienen una altura consistente.
-
-Endpoints:
-
-```text
-GET /api/catalogo/servicios/?empresa_slug=SLUG
-GET /api/catalogo/servicios/detalle/?empresa_slug=SLUG&servicio=CLAVE
-```
-
-### Promociones
-
-Archivo: `src/pages/PromotionsPage.jsx`.
-
-- Los banners no se usan para llenar esta pagina.
-- La pagina usa ofertas reales.
-- Tipos esperados: `producto`, `productos` y `paquete`.
-- Muestra imagen, descripcion, productos relacionados, precio normal, precio
-  de oferta, porcentaje y destino.
-- Las ofertas todavia son informativas; el motor de descuentos del backend es
-  quien determina los precios aplicables del carrito.
-
-Endpoint:
-
-```text
-GET /api/promociones/ofertas/?empresa_slug=SLUG
-```
-
-### Sucursales
-
-Archivo: `src/pages/BranchesPage.jsx`.
-
-- Muestra nombre grande, direccion, telefono, horario e imagen.
-- El enlace abre Google Maps en otra pestana.
-- El fondo de la imagen es transparente para integrarse con la tarjeta.
-
-Endpoint:
-
-```text
-GET /api/empresas/sucursales/?empresa_slug=SLUG&buscar=TEXTO
-```
-
-### Contacto
-
-Archivo: `src/pages/ContactPage.jsx`.
-
-- Muestra datos de la empresa.
-- Envia nombre, telefono, correo, asunto y mensaje.
-- Nombre y mensaje son obligatorios.
-- Se exige telefono o correo, al menos uno.
-- El buscador del header se oculta.
-
-Endpoint:
-
-```text
-POST /api/contacto/mensajes/
-```
-
-Body:
-
-```json
-{
-  "empresa_slug": "Analiza",
-  "nombre": "Cliente",
-  "telefono": "99999999",
-  "correo": "correo@ejemplo.com",
-  "asunto": "Consulta",
-  "mensaje": "Mensaje"
-}
-```
-
-## 12. Autenticacion y sesion
-
-Frontend implementado:
-
-- Modal de inicio de sesion.
-- Vista de cuenta activa.
-- Cierre de sesion.
-- Restauracion automatica al recargar.
-- Access token guardado solo en memoria.
-- Refresh token en cookie `HttpOnly` del backend.
-- `credentials: "include"` en login, refresh y logout.
-- Reintento automatico del request despues de renovar access token.
-- Un `401` definitivo limpia la sesion y vuelve a abrir el login.
-
-Endpoints usados:
-
-```text
-POST /api/usuarios/login/
-POST /api/usuarios/token/refresh/
-POST /api/usuarios/token/logout/
-GET  /api/usuarios/perfiles/mi-perfil/
-```
-
-Duracion configurada en backend:
-
-- Access token: 15 minutos.
-- Limite absoluto de sesion: 5 horas.
-
-Backend disponible pero frontend pendiente:
-
-```text
-POST /api/usuarios/registro-comprador/
-POST /api/usuarios/verificar-correo/
-POST /api/usuarios/reenviar-verificacion/
-POST /api/usuarios/solicitar-recuperacion-contrasena/
-POST /api/usuarios/confirmar-recuperacion-contrasena/
-```
-
-No existe todavia interfaz frontend para registro, verificacion de correo ni
-recuperacion de contrasena.
-
-## 13. Favoritos
-
-- Persisten en el backend por usuario y empresa.
-- Aceptan `producto`, `perfil` y `combo`.
-- Se muestran en un drawer propio.
-- Desde favoritos se puede agregar al carrito.
-- Un usuario sin sesion debe iniciar sesion para usar esta persistencia.
-
-Endpoints:
-
-```text
-GET    /api/favoritos/?empresa_slug=SLUG
-POST   /api/favoritos/
-DELETE /api/favoritos/{id}/
-```
-
-## 14. Carrito
-
-### Contrato vigente
-
-Tipos validos:
-
-```text
-producto
-perfil
-combo
-```
-
-Endpoint para agregar:
-
-```text
-POST /api/pedidos/carritos/{id}/agregar-articulo/
-```
-
-Body:
-
-```json
-{
-  "codigo": "CODIGO",
-  "tipo_articulo": "producto",
-  "cantidad": 1
-}
-```
-
-Campos vigentes de respuesta del item:
-
-- `articulo_nombre`
-- `codigo`
-- `tipo_articulo`
-- `imagen_final`
-- `cantidad`
-- `precio_unitario`
-- `subtotal`
-
-No recuperar compatibilidad antigua:
-
-- `agregar-producto` fue retirado y responde 404.
-- `codigo_barra` ya no es entrada alternativa al agregar.
-- `producto_nombre` fue retirado del carrito.
-- `imagen_principal` fue retirado de la respuesta del carrito.
-- `producto_nombre_actual` fue retirado del detalle de pedido.
-
-Otros endpoints:
-
-```text
-POST   /api/pedidos/carrito/calcular/
-GET    /api/pedidos/carritos/mi-carrito/
-PATCH  /api/pedidos/items-carrito/{id}/
-DELETE /api/pedidos/items-carrito/{id}/
-```
-
-### Invitado y usuario autenticado
-
-Invitado:
-
-- Se guarda en `localStorage`.
-- Clave: `ventas_cart_v1:<slug_empresa>`.
-- Permanece al actualizar la pagina.
-
-Autenticado:
-
-- Se usa el carrito persistente del backend.
-- Permanece entre sesiones.
-
-Problema abierto de alta prioridad:
-
-- Al agregar productos como invitado y luego iniciar sesion/registrarse, el
-  usuario reporta que los productos desaparecen.
-- `App.jsx` intenta migrarlos uno por uno al carrito del servidor.
-- No se debe considerar resuelto hasta reproducir y verificar la respuesta de
-  cada request.
-- Solucion recomendada: endpoint transaccional e idempotente de backend para
-  fusionar carrito invitado + carrito del usuario en una sola operacion.
-- El frontend debe borrar el carrito local solo despues de recibir la fusion
-  completa y valida.
-- Si una linea falla, debe conservarse localmente y mostrarse el error.
-
-### Calculo
-
-- El frontend llama al calculador publico despues de cambios, con espera de
-  `220ms`.
-- El backend es la fuente final de precios, descuentos, impuesto y total.
-- `cobra_impuesto` y `porcentaje_impuesto` vienen de la empresa/calculador.
-- Empresas sin impuesto muestran impuesto cero y no deben inventar ISV.
-- Empresas con impuesto usan actualmente 15 por ciento.
-- Perfiles y combos conservan su precio propio y no reciben promociones de
-  productos simples.
-
-## 15. Checkout y pedidos
-
-Rutas SPA:
+Rutas del proceso de compra:
 
 ```text
 /checkout
 /pago/{referencia}
 ```
 
-El checkout exige sesion. Si no existe, abre el login.
-
-Flujo para empresa sin envios:
+### Administracion
 
 ```text
-Carrito -> Pago
+/administracion
+/administracion/resumen
+/administracion/productos
+/administracion/familias
+/administracion/categorias
+/administracion/paquetes
+/administracion/banners
+/administracion/ofertas
+/administracion/descuentos
+/administracion/pedidos
+/administracion/pagos
+/administracion/inventario
+/administracion/contactos
+/administracion/sucursales
+/administracion/sobre-nosotros
+/administracion/menu
+/administracion/usuarios
+/administracion/configuracion
+/administracion/empresas
 ```
 
-- El titulo es `Finaliza tu compra`.
-- No muestra seleccion de entrega.
-- No muestra observaciones.
-- Internamente envia `tipo_entrega: retiro_en_local` porque el backend lo
-  necesita como contrato.
-- Muestra el aviso: examenes en la sucursal mas cercana; otros servicios por
-  telefono.
-- Usa `empresa.telefono` y `88888888` solo como respaldo temporal.
+`/administracion/empresas` solo aparece para superusuario. Inventario se oculta
+cuando la empresa no maneja productos fisicos.
 
-Flujo para empresa con envios:
+Vercel tiene fallback de cualquier ruta hacia `index.html`; esto es necesario
+porque las rutas son SPA.
+
+## 7. Resolucion multiempresa, marca y menu
+
+Archivo principal: `src/services/empresaService.js`.
+
+Orden de resolucion de empresa:
+
+1. Query string: `empresa_slug`, `slug` o `empresa`.
+2. Valor recordado en `localStorage` como `ventas_empresa_slug`.
+3. Dominio/subdominio actual mediante `host` y `X-Frontend-Host`.
+4. `VITE_EMPRESA_SLUG` como respaldo local.
+
+Ejemplo local:
 
 ```text
-Carrito -> Entrega -> Pago
+http://127.0.0.1:5173/?empresa_slug=Analiza
 ```
 
-- Permite `envio_local` y `envio_nacional`.
+Para eliminar el override guardado:
+
+```js
+localStorage.removeItem("ventas_empresa_slug")
+```
+
+Datos de empresa consumidos por la interfaz:
+
+- nombre, slug y logo;
+- colores principal, secundario, acento, texto y fondo;
+- menu;
+- telefono, correo y direccion;
+- redes sociales;
+- impuesto y porcentaje calculado;
+- disponibilidad de envios;
+- imagenes de producto;
+- modo de inventario.
+
+El tema publico se aplica con variables CSS construidas en `App.jsx`. El panel
+usa variables propias basadas en los mismos colores de la empresa.
+
+Si el backend publico falla, la tienda usa contenido neutral de `public/demo/`.
+No debe mostrar Analiza ni otra marca real como respaldo de una empresa distinta.
+
+## 8. Busqueda
+
+Existe un solo buscador contextual en el header publico, con espera de 320 ms.
+No se deben agregar buscadores duplicados dentro de cada pagina.
+
+- Inicio: combos y productos mas vendidos.
+- Examenes/productos: consulta el listado actual.
+- Perfiles: consulta paquetes.
+- Servicios: busca productos dentro de familias y categorias.
+- Promociones: filtra ofertas y productos relacionados.
+- Sucursales: consulta ubicaciones.
+- Contacto, Sobre nosotros, checkout y pago: buscador oculto.
+
+El panel administrativo tiene su propio buscador por recurso y paginacion de
+20 registros.
+
+## 9. Tienda publica implementada
+
+### 9.1 Inicio
+
+Archivo: `src/pages/HomePage.jsx`.
+
+- Carrusel con banners activos que tengan imagen.
+- Banner completo clickeable, con destinos internos o externos.
+- Cambio automatico, controles y pausa por interaccion.
+- Recarga de banners al recuperar foco, volver a la pestana y cada 30 segundos.
+- Combos destacados; la seccion se oculta si esta vacia.
+- Hasta 10 productos mas vendidos.
+- Modo demo neutral cuando no responde el backend.
+
+### 9.2 Examenes y productos
+
+Archivo: `src/pages/ProductListPage.jsx`.
+
+- El endpoint se selecciona segun el tipo inferido del menu.
+- Busqueda desde el header.
+- Tarjetas con nombre, descripcion, precio, inventario, favorito y carrito.
+- Variantes normal, compacta, mini e inicio.
+- Respeta `productos_con_imagen`.
+- Impide agregar articulos marcados como agotados.
+
+### 9.3 Perfiles, paquetes y combos
+
+Archivos: `PackageListPage.jsx` y `PackageCard.jsx`.
+
+- Perfiles y combos son articulos vendibles con codigo y precio propios.
+- Muestran componentes, precio normal/final, favorito y carrito.
+- Los combos destacados tambien aparecen en Inicio.
+- Sus imagenes no dependen de la bandera de imagenes de productos simples.
+
+### 9.4 Servicios
+
+Archivo: `src/pages/ServiceTypesPage.jsx`.
+
+- Acordeon en tres niveles: familia, categoria y producto.
+- Carga el detalle de cada familia cuando se abre.
+- Durante una busqueda carga los detalles necesarios y abre coincidencias.
+- Familias y categorias admiten imagen propia.
+- Productos usan tarjeta compacta con favorito y carrito.
+- No crea subpaginas separadas por familia.
+- Omite la familia oficial `Examenes`; esa pagina usa
+  `/api/v1/catalogo/examenes/` y no `servicios/detalle`.
+
+### 9.5 Promociones
+
+Archivo: `src/pages/PromotionsPage.jsx`.
+
+- Consume ofertas reales, separadas de los banners de Inicio.
+- Muestra imagen, tipo, descripcion, productos, precios y porcentaje.
+- Admite destino interno o externo.
+- La pagina es informativa; el calculador del backend decide el descuento real
+  del carrito.
+
+### 9.6 Sucursales
+
+Archivo: `src/pages/BranchesPage.jsx`.
+
+- Nombre, imagen, direccion, telefono y horario.
+- Busqueda desde el header.
+- Enlace externo a Google Maps.
+
+### 9.7 Contacto y redes sociales
+
+Archivo: `src/pages/ContactPage.jsx`.
+
+- Datos publicos de la empresa y enlaces sociales configurados.
+- Formulario con nombre, telefono, correo, asunto y mensaje.
+- Exige nombre, mensaje y al menos telefono o correo.
+- Envia el mensaje a la bandeja administrativa de la empresa.
+
+### 9.8 Sobre nosotros
+
+Archivos: `src/pages/AboutPage.jsx` y `src/admin/AboutSettingsPage.jsx`.
+
+- Plantilla unica y multiempresa.
+- Introduccion, historia, mision, vision, valores, compromiso e imagen.
+- Oculta secciones sin contenido.
+- Reutiliza las redes sociales de la empresa.
+- El panel permite editar texto e imagen.
+
+## 10. Autenticacion y cuenta
+
+### Implementado
+
+- Login publico y login del panel.
+- Restauracion de sesion al recargar.
+- Access token guardado solo en memoria.
+- Refresh token en cookie `HttpOnly` administrada por el backend.
+- Renovacion automatica y un solo request de refresh concurrente.
+- Reintento del request original despues de renovar.
+- Logout y limpieza del access token.
+- Un `401` definitivo limpia la sesion y solicita iniciar nuevamente.
+- Deteccion de roles administrativos y acceso directo al panel.
+- Registro de comprador desde Mi cuenta.
+- Verificacion de correo con codigo.
+- Reenvio del codigo de verificacion.
+- El registro publico no envia rol; el backend crea cuentas de comprador.
+
+### Pendiente en el frontend
+
+- Solicitud y confirmacion de recuperacion de contrasena.
+- Pantalla de perfil del comprador.
+- Edicion de datos personales.
+- Historial de pedidos del comprador.
+- Direcciones guardadas.
+
+La recuperacion de contrasena ya tiene endpoints documentados en el backend.
+Para perfil, pedidos y direcciones debe confirmarse el contrato exacto antes
+de construir las pantallas.
+
+## 11. Favoritos y carrito
+
+### Favoritos
+
+- Persisten por usuario y empresa.
+- Admiten producto, perfil y combo.
+- Se muestran en un drawer.
+- Se puede agregar un favorito directamente al carrito.
+- Sin sesion se abre el login.
+
+### Carrito invitado
+
+- Persiste en `localStorage` bajo `ventas_cart_v1:<slug_empresa>`.
+- Conserva cantidad, codigo, tipo, precio mostrado e inventario conocido.
+- Se mantiene al recargar.
+
+### Carrito autenticado
+
+- Se obtiene y modifica en el backend.
+- Admite producto, perfil y combo.
+- Se conserva entre sesiones.
+- Al iniciar sesion, `App.jsx` intenta pasar uno por uno los articulos locales
+  al carrito del usuario.
+
+### Calculo comercial
+
+- El calculador publico se ejecuta 220 ms despues de cada cambio.
+- El backend es la fuente final de precio, descuento, impuesto y total.
+- La interfaz muestra precio original/final y regla aplicada.
+- Las cantidades respetan inventario cuando existe.
+- El checkout se bloquea si hay un error de calculo.
+
+### Problema abierto
+
+La fusion de carrito invitado a carrito autenticado no esta cerrada. Existe
+codigo de migracion y conserva localmente las lineas que fallan, pero se reporto
+perdida de productos y no hay una prueba automatizada que garantice el flujo.
+
+Solucion recomendada:
+
+- endpoint transaccional e idempotente para fusionar ambos carritos;
+- borrar el almacenamiento local solo despues de una respuesta completa;
+- devolver resultado por linea y conservar cualquier articulo rechazado;
+- prueba E2E: invitado agrega -> login -> carrito conserva todo.
+
+No recuperar contratos retirados como `agregar-producto`, `codigo_barra` como
+entrada alternativa o campos antiguos `producto_nombre`.
+
+## 12. Checkout, pedidos y pagos
+
+### Checkout
+
+- Requiere sesion.
+- Sin envios usa visualmente `Carrito -> Pago` y envia
+  `retiro_en_local` al backend.
+- Con envios usa `Carrito -> Entrega -> Pago`.
+- Admite envio local y nacional.
 - Solicita destinatario, telefono, departamento, municipio, direccion y
-  referencia.
-- Muestra observaciones.
-- El envio aparece en el resumen solo para empresas con envios.
+  referencia cuando corresponde.
+- Crea el pedido desde el carrito persistente.
+- Si crear el pago falla despues de crear el pedido, guarda el pedido pendiente
+  en `sessionStorage` y permite reintentar sin duplicarlo.
+- El pedido devuelto pasa a ser la fotografia comercial congelada.
 
-Crear pedido:
+Pendientes del checkout:
+
+- definir y mostrar tarifa real de envio antes de confirmar;
+- eliminar el telefono temporal `88888888` cuando falte telefono empresarial;
+- probar doble clic, recarga, expiracion de sesion y errores parciales;
+- decidir si se implementaran direcciones guardadas.
+
+### Pagos
+
+- Ruta separada por referencia.
+- Estados: pendiente, aprobado y rechazado.
+- Consulta automatica cada 8 segundos mientras esta pendiente.
+- Actualizacion manual.
+- Reintento de un pago rechazado cuando existe contexto local.
+- Muestra `url_pago` si el backend devuelve una URL HTTP/HTTPS.
+
+Estado parcial:
+
+- El proveedor actual es simulado.
+- No existe cobro bancario real ni redireccion automatica.
+- El usuario espera redireccion al proveedor cuando exista una URL real.
+- No almacenar tarjeta, CVV ni credenciales bancarias en este frontend.
+
+## 13. Panel administrativo implementado
+
+Entrada principal: `src/admin/AdminApp.jsx`.
+
+### 13.1 Acceso y aislamiento
+
+- Login y restauracion con la misma sesion segura.
+- Contexto administrativo obtenido del backend.
+- Empresa activa recordada como `ventas_admin_empresa_slug`.
+- Selector de empresa para cuentas con mas de una empresa permitida.
+- Gerentes y administradores quedan sujetos al contexto autorizado por el
+  backend; React no debe considerarse una barrera de seguridad.
+- Compradores no tienen acceso.
+- Superusuario puede ver el modulo Todas las empresas.
+- Menu lateral responsivo y enlace a la tienda publica de la empresa activa.
+
+### 13.2 Dashboard
+
+- Conteo de catalogo activo, usuarios, pedidos y mensajes nuevos.
+- Pedidos recientes.
+- Mensajes pendientes de revision.
+- Resumen de inventario, agotados y bajo stock cuando aplica.
+
+### 13.3 Modulos administrativos
+
+| Modulo | Estado y acciones actuales |
+| --- | --- |
+| Familias | Listar, buscar, paginar, crear, editar, activar/desactivar, imagen y eliminar si el backend lo permite |
+| Categorias | Igual que familias, con dependencia de familia |
+| Productos y servicios | CRUD, clasificacion, precio, imagen, tipo de articulo y minimo de inventario |
+| Perfiles y combos | CRUD, componentes con cantidad/orden, precio, imagen y destacado |
+| Menu | Editar texto, orden y estado de modulos oficiales; no crear ni eliminar |
+| Sucursales | CRUD de datos, ubicacion, Maps, orden e imagen |
+| Banners | CRUD, imagen, destino, orden, fechas y vigencia |
+| Ofertas | CRUD para uno/varios productos o paquete |
+| Descuentos | CRUD de reglas porcentuales, alcance, productos y vigencia |
+| Usuarios | Crear/editar segun rol, bloquear/desbloquear y asignar permisos; no eliminar |
+| Mensajes | Consultar detalle y cambiar estado; contenido historico no editable |
+| Pedidos | Listado y detalle de solo lectura |
+| Pagos | Listado y detalle de solo lectura |
+| Inventario | Resumen, busqueda y ajuste de existencia con motivo/referencia |
+| Configuracion | Datos, contacto, redes, logo, imagen de sucursal, colores, impuesto, envios e imagenes de producto |
+| Sobre nosotros | Editor de contenido institucional e imagen |
+| Empresas | CRUD general visible solo al superusuario |
+
+Comportamiento comun del panel:
+
+- Busqueda, paginacion y opcion de incluir inactivos.
+- Formularios laterales para crear, editar o consultar detalle.
+- Carga de imagen por URL o archivo, segun el recurso.
+- Errores de campo del backend.
+- Confirmacion de eliminacion.
+- Un `409 Conflict` se presenta como registro protegido por historial.
+- Roles disponibles en el formulario de usuario se reducen segun el actor.
+
+### 13.4 Pendientes del panel
+
+- Probar cada modulo con superusuario, administrador maestro, administrador de
+  empresa y gerente.
+- Probar aislamiento cambiando slugs/IDs manualmente.
+- Exponer filtros avanzados ya disponibles en APIs de pedidos, pagos, usuarios,
+  fechas y estados; hoy la interfaz generica usa principalmente busqueda.
+- Incorporar reportes comerciales y graficas si permanecen en el alcance.
+- Exportar pedidos, pagos, inventario o usuarios si el negocio lo requiere.
+- Incorporar historial detallado de movimientos de inventario.
+- Definir flujo operativo para cambiar estados de pedido; actualmente pedidos
+  y pagos son deliberadamente de solo lectura.
+- Agregar notificaciones o indicadores de actividad en tiempo real.
+- Pruebas automatizadas de CRUD, uploads, paginacion y permisos.
+- Revision visual del panel en movil y con tablas extensas.
+
+## 14. Servicios y contratos consumidos
+
+Mapa por archivo:
 
 ```text
-POST /api/pedidos/carritos/{id}/generar-pedido/
-```
-
-Body actual:
-
-```json
-{
-  "tipo_entrega": "retiro_en_local",
-  "observaciones": "",
-  "nombre_recibe": "",
-  "telefono_recibe": "",
-  "direccion_entrega": "",
-  "referencia_entrega": "",
-  "departamento_entrega": "",
-  "municipio_entrega": ""
-}
-```
-
-El pedido crea una fotografia comercial inmutable de empresa, cliente,
-articulos, componentes, descuentos, impuesto, entrega y total. El frontend debe
-usar `nombre_articulo` en detalles historicos.
-
-Si el pedido se crea pero falla el inicio de pago, se guarda temporalmente en
-`sessionStorage` para poder reintentar sin crear otro pedido.
-
-## 16. Pagos
-
-Endpoints:
-
-```text
-POST /api/pagos/iniciar/
-GET  /api/pagos/{referencia}/
-```
-
-Inicio:
-
-```json
-{
-  "pedido_id": 123
-}
-```
-
-Reglas:
-
-- El frontend solo envia `pedido_id`.
-- Monto y moneda salen del pedido.
-- Un cliente no puede acceder al pago de otro.
-- Solo existe un intento pendiente por pedido.
-- Estados soportados: `pendiente`, `aprobado`, `rechazado`.
-- La pantalla consulta nuevamente cada 8 segundos mientras esta pendiente.
-- Permite actualizar manualmente.
-- Un pago rechazado puede reintentarse con el contexto guardado.
-
-Estado actual importante:
-
-- El backend usa el proveedor `simulado`.
-- Todavia no existe cobro real.
-- Todavia no existe `url_pago` real.
-- Por eso el frontend muestra `Pago pendiente` y no puede abrir una plataforma
-  bancaria.
-- Si el backend devuelve `url_pago`, la pantalla actual muestra un enlace
-  `Continuar con el proveedor`.
-- Preferencia pendiente del usuario: cuando exista una URL real, redirigir
-  automaticamente al proveedor en lugar de obligar a pulsar otro boton.
-
-No almacenar datos de tarjeta, CVV ni credenciales bancarias en este proyecto.
-
-## 17. Modo de prueba cuando el backend esta apagado
-
-Archivos:
-
-- `src/config/demoContent.js`
-- `public/demo/tu-logo-aqui.png`
-- `public/demo/tu-banner-promocional-aqui.png`
-- `public/demo/tu-producto-aqui.png`
-
-Comportamiento:
-
-- No muestra Analiza como respaldo de otra empresa.
-- Usa una empresa neutral y recursos `Tu ... aqui`.
-- Muestra un aviso de modo de prueba.
-- El modo demo sirve para revisar estructura visual, no para probar carrito
-  autenticado, favoritos, pedidos ni pagos.
-
-## 18. Archivos principales del frontend
-
-```text
-src/app/App.jsx
-  Orquestacion general, empresa, rutas, sesion, carrito, favoritos y busqueda.
-
 src/services/apiClient.js
-  Cliente HTTP, access token en memoria, refresh cookie, errores y media.
+  URL, fetch, JWT, refresh, errores, arrays y media.
 
 src/services/empresaService.js
-  Resolucion multiempresa y menu.
+  Empresa actual, menu y Sobre nosotros.
 
 src/services/paginasService.js
-  Catalogo, perfiles, servicios y sucursales.
+  Productos, examenes, perfiles, combos, servicios, sucursales y contacto.
 
 src/services/promocionesService.js
   Banners y ofertas.
@@ -788,161 +552,265 @@ src/services/promocionesService.js
 src/services/authService.js
   Login, perfil, restauracion y logout.
 
+src/services/favoritosService.js
+  Favoritos.
+
 src/services/cartService.js
   Calculo y carrito persistente.
 
-src/services/favoritosService.js
-  Favoritos autenticados.
-
 src/services/pedidoService.js
-  Generacion de pedido.
+  Generacion de pedido desde carrito.
 
 src/services/pagoService.js
   Inicio y consulta de pago.
 
-src/pages/HomePage.jsx
-  Carrusel, combos y mas vendidos.
-
-src/pages/ServiceTypesPage.jsx
-  Familias, categorias y productos en acordeon.
-
-src/pages/CheckoutPage.jsx
-  Revision, entrega opcional, pedido e inicio de pago.
-
-src/pages/PaymentPage.jsx
-  Estado de pago y reintentos.
-
-src/pages/DynamicPages.module.css
-  Layout comun, tarjetas, sucursales, contacto y servicios.
-
-src/pages/CheckoutPages.module.css
-  Checkout y pago.
-
-src/components/layout/Header.module.css
-  Tamano y comportamiento del logo/header. Contiene ajustes manuales aprobados.
+src/services/adminService.js
+  Contexto administrativo, CRUD generico, configuracion, inventario y acciones.
 ```
 
-## 19. Codigo retirado que no debe recuperarse
+Contratos detallados del panel: `API_PANEL_ADMINISTRATIVO.md`.
 
-Se eliminaron por no usarse:
+## 15. Almacenamiento, sesion y seguridad del navegador
 
-- `src/components/catalog/CategoryStrip.jsx`
-- `src/components/catalog/CategoryStrip.module.css`
-- `src/components/catalog/FeaturedProducts.jsx`
-- `src/components/catalog/FeaturedProducts.module.css`
-- `src/services/catalogoService.js`
+`localStorage`:
 
-Tambien se retiraron los alias antiguos del carrito en el frontend.
+```text
+ventas_empresa_slug
+ventas_admin_empresa_slug
+ventas_cart_v1:<slug_empresa>
+```
 
-Una auditoria estatica encontro que todos los archivos fuente restantes son
-alcanzables desde `src/main.jsx`.
+`sessionStorage`:
 
-## 20. Estado de verificacion
+- pedido creado pendiente de iniciar/reintentar pago;
+- contexto minimo para reintentar un pago rechazado.
 
-Frontend:
+No se guarda el access token en almacenamiento persistente. El refresh token
+debe permanecer en una cookie `HttpOnly` del backend.
 
-- Ultimo `npm run build`: correcto.
-- Vite transformo 1630 modulos.
-- No existe aun un script de pruebas automatizadas en `package.json`.
-- La revision visual se ha realizado principalmente con capturas del usuario.
-- El navegador automatizado no estuvo disponible en la ultima revision.
+Antes de produccion se debe confirmar:
 
-Backend, segun el registro del 31 de julio:
+- HTTPS y cookies `Secure`/`SameSite` correctas;
+- CORS, CSRF y hosts permitidos;
+- aislamiento multiempresa en todos los endpoints;
+- ausencia de secretos en el bundle Vite;
+- validacion de archivos y URLs en el backend;
+- politicas de expiracion, bloqueo y revocacion de sesiones;
+- proteccion y firma de webhooks de pago.
 
-- `python manage.py test`: 78 pruebas aprobadas.
-- `python manage.py check`: sin problemas.
-- `python manage.py makemigrations --check --dry-run`: sin cambios pendientes.
-- La app `pagos` y su migracion inicial estan aplicadas localmente.
+## 16. Despliegue actual
 
-Estas verificaciones describen el ultimo estado registrado; deben repetirse
-despues de instalar el proyecto en otra PC.
+`vercel.json` contiene:
 
-## 21. Pendientes priorizados
+- proxy de `/api/*` hacia el backend de Render;
+- proxy de `/media/*` hacia Render;
+- fallback de rutas SPA a `/index.html`.
 
-### Prioridad alta
+Esto significa que el repositorio esta configurado para desplegar, pero no
+demuestra por si solo que produccion este validada.
 
-1. Corregir y verificar la fusion del carrito invitado al iniciar sesion o
-   registrarse.
-2. Revisar, hacer commit y subir todos los cambios locales de frontend y
-   backend.
-3. Elegir e integrar una pasarela de pago real.
-4. Redirigir automaticamente a `url_pago` cuando el proveedor real la entregue.
-5. Implementar frontend de registro, verificacion de correo y recuperacion de
-   contrasena.
+Falta confirmar en el entorno publicado:
 
-### Prioridad media
+- frontend y backend responden por HTTPS;
+- login, refresh y logout conservan la cookie entre Vercel y Render;
+- media e imagenes cargan correctamente;
+- recargar cualquier ruta publica o administrativa no produce 404;
+- dominios y empresas resuelven el tenant correcto;
+- tiempos de arranque de Render no rompen la experiencia;
+- proveedor de correo y pagos real;
+- almacenamiento persistente de base de datos e imagenes;
+- logs, monitoreo y alertas.
 
-1. Agregar pruebas automatizadas para sesion, carrito, multiempresa y checkout.
-2. Probar responsive en movil, laptop y monitor grande con screenshots.
-3. Definir despliegue real del frontend y backend.
-4. Definir almacenamiento externo de imagenes.
-5. Generar PDF real de prefactura si sigue dentro del alcance.
-6. Decidir conexion final con PostgreSQL/Supabase.
+## 17. Estructura principal
+
+```text
+frontend/
+|-- public/demo/                  Recursos neutrales sin backend
+|-- src/
+|   |-- admin/                    Panel administrativo
+|   |-- app/App.jsx               Orquestador de tienda publica
+|   |-- components/
+|   |   |-- auth/
+|   |   |-- cart/
+|   |   |-- catalog/
+|   |   |-- checkout/
+|   |   |-- favorites/
+|   |   |-- layout/
+|   |   `-- social/
+|   |-- config/demoContent.js
+|   |-- pages/                    Paginas publicas, checkout y pago
+|   |-- services/                 Cliente y contratos HTTP
+|   |-- styles/                   Tokens, base y utilidades
+|   `-- utils/                    Menu, busqueda, dinero, errores y pagos
+|-- API_PANEL_ADMINISTRATIVO.md
+|-- BRIEF_FRONTEND.md             Historico; no es la fuente actual
+|-- CONTEXTO_CONTINUACION.md      Este documento maestro
+|-- REGISTRO_CAMBIOS_CONTINUOS.md
+|-- package.json
+|-- vercel.json
+`-- vite.config.js
+```
+
+Archivos que coordinan mas responsabilidades y requieren especial cuidado:
+
+- `src/app/App.jsx`: empresa, menu, rutas, sesion, carrito, favoritos, busqueda,
+  checkout y pago.
+- `src/admin/AdminApp.jsx`: sesion administrativa, empresa activa, rutas,
+  permisos visibles y composicion del panel.
+- `src/admin/AdminResourcePage.jsx`: CRUD generico del panel.
+- `src/admin/resourceConfigs.js`: campos, columnas y reglas de cada recurso.
+- `src/services/apiClient.js`: autenticacion y comportamiento de todos los
+  requests.
+- `src/utils/menu.js`: compatibilidad entre menu de backend y paginas React.
+
+## 18. Verificacion realizada el 2026-08-05
+
+Repositorio antes de actualizar este documento:
+
+- rama `main`;
+- `HEAD` y `origin/main` en `8c1ad60`;
+- arbol de trabajo limpio.
+
+Compilacion:
+
+```text
+npm run build: correcto
+Vite 5.4.21
+1641 modulos transformados
+CSS: 98.28 kB (16.98 kB gzip)
+JS: 339.55 kB (97.62 kB gzip)
+```
+
+Limitaciones de la verificacion:
+
+- `package.json` no tiene script de pruebas.
+- No hay script de lint.
+- No hay pruebas E2E.
+- No se ejecuto una matriz completa contra el backend con todos los roles.
+- No se verificaron visualmente todas las rutas y breakpoints en esta auditoria.
+- La configuracion de despliegue se inspecciono, pero el sitio publicado no se
+  valido como parte de esta actualizacion.
+
+Una compilacion correcta confirma que el bundle se genera; no confirma por si
+sola que cada flujo de negocio funcione contra datos reales.
+
+## 19. Pendientes priorizados
+
+### Prioridad alta: cerrar funcionalidad principal
+
+1. Resolver y probar la fusion del carrito invitado al autenticarse.
+2. Construir recuperacion de contrasena y probar el alta/verificacion de cuenta.
+3. Integrar una pasarela de pago real y redirigir a `url_pago`.
+4. Definir calculo/tarifa real de envio antes de cobrar.
+5. Ejecutar pruebas E2E del recorrido catalogo -> carrito -> login -> pedido ->
+   pago.
+6. Probar el panel con todos los roles y con dos empresas para confirmar
+   aislamiento y permisos.
+
+### Prioridad media: completar experiencia y operacion
+
+1. Crear perfil del comprador e historial de pedidos.
+2. Decidir e implementar direcciones guardadas.
+3. Definir prefactura/recibo descargable y PDF si sigue en alcance.
+4. Agregar filtros avanzados y exportaciones al panel.
+5. Definir reportes, graficas e indicadores comerciales.
+6. Agregar historial visible de movimientos de inventario.
+7. Definir notificaciones de venta y atencion de mensajes.
+8. Crear `.env.example` sin secretos.
+9. Agregar pruebas unitarias, de integracion y E2E.
+10. Agregar lint/formato y validaciones en CI.
+11. Hacer auditoria de accesibilidad, teclado, foco, contraste y lectores de
+    pantalla.
+12. Probar responsive en movil, tablet, laptop y monitor amplio.
 
 ### Antes de produccion
 
-1. Cambiar todas las credenciales temporales.
-2. Configurar HTTPS y cookies seguras.
-3. Configurar dominios, CORS, CSRF y hosts reales.
-4. Configurar proveedor de correo real.
-5. Configurar secretos de pagos fuera del repositorio.
-6. Respaldar y migrar datos e imagenes.
-7. Ejecutar pruebas completas y revision de seguridad.
+1. Cambiar credenciales temporales.
+2. Usar base de datos y almacenamiento persistentes.
+3. Configurar correo real.
+4. Configurar pagos, secretos y webhooks fuera del repositorio.
+5. Configurar dominios, HTTPS, cookies, CORS, CSRF y hosts.
+6. Validar backups y recuperacion.
+7. Incorporar monitoreo de errores, logs y alertas.
+8. Ejecutar pruebas de seguridad y aislamiento multiempresa.
+9. Ejecutar pruebas de carga basicas para catalogo y panel.
+10. Hacer una aceptacion funcional con datos reales de cada empresa.
 
-## 22. Preferencias y decisiones del usuario que deben conservarse
+## 20. Problemas y riesgos conocidos
 
-- Hablar en espanol y explicar claramente antes de cambios grandes.
+- Fusion de carrito invitado no garantizada.
+- Pagos simulados; el flujo no cobra dinero real.
+- Envio aparece como `Por definir` antes de crear el pedido.
+- Respaldo temporal de telefono `88888888` en checkout.
+- Sin pruebas automatizadas, los cambios en `App.jsx` pueden afectar varias
+  funciones a la vez.
+- El panel depende de un CRUD generico grande; una modificacion de formularios
+  puede impactar muchos recursos.
+- No se ha documentado una estrategia final de observabilidad.
+- El fallback demo permite revisar la apariencia, pero no valida ningun flujo
+  autenticado ni comercial.
+- El query string de empresa es util para desarrollo; produccion debe confiar
+  principalmente en dominios autorizados y en aislamiento de backend.
+
+## 21. Decisiones que deben conservarse
+
 - Mantener el sistema multiempresa; no quemar datos de Analiza para todos.
-- Usar logo, colores, menu e imagenes del backend.
-- No mostrar una marca antigua o inventada si falla el logo.
-- Evitar recursos que parezcan creados por IA como contenido real.
+- Usar logo, colores, menu, contenido e imagenes del backend.
+- Usar recursos neutrales si falla la empresa publica.
 - Mantener un solo buscador contextual en el header.
-- No duplicar Examenes y Servicios.
-- Servicios debe usar acordeones, no subpaginas.
-- Categorias dentro de Servicios tambien deben abrir/cerrar.
-- Inicio solo usa combos activos y hasta 10 mas vendidos.
-- Ocultar secciones vacias como banners y combos.
-- Banners y promociones reales son conceptos separados.
-- Las imagenes de banner completas son clickeables.
-- No mostrar impuesto cuando la empresa no cobra impuesto.
-- No mostrar envio cuando la empresa no ofrece envios.
-- Sin envios, el flujo visual es `Carrito -> Pago`.
-- Con envios, el flujo visual es `Carrito -> Entrega -> Pago`.
-- No mostrar Observaciones cuando la empresa no tiene envios.
-- Mantener el carrito despues de recargar y despues de autenticarse.
-- La pantalla de pago debe estar separada del checkout.
-- Cuando exista pasarela real, el usuario espera ser enviado al pago real.
-- `.agents/` y `skills-lock.json` no deben subirse a GitHub.
+- No duplicar Examenes y Servicios con el mismo contenido.
+- Servicios no debe llamar `servicios/detalle` para la familia `Examenes`.
+- Servicios usa acordeones, no subpaginas.
+- Inicio muestra solo secciones con contenido.
+- Banners y ofertas son recursos diferentes.
+- El banner completo puede ser clickeable.
+- El backend decide precios, descuentos, impuesto e inventario.
+- No mostrar impuesto cuando la empresa no lo cobra.
+- No mostrar entrega cuando la empresa no ofrece envios.
+- Sin envios: `Carrito -> Pago`.
+- Con envios: `Carrito -> Entrega -> Pago`.
+- Mantener checkout y estado de pago en pantallas separadas.
+- No almacenar datos bancarios sensibles en React.
+- Pedidos y pagos administrativos son historial de solo lectura, salvo que se
+  apruebe un flujo de negocio controlado.
+- `.agents/`, `skills-lock.json`, `node_modules/` y `dist/` no deben subirse.
 
-## 23. Instruccion de inicio para una conversacion nueva
+## 22. Definicion practica de frontend terminado
 
-Prompt recomendado:
+El frontend no debe considerarse terminado solo porque compile. Para cerrar la
+primera version deben cumplirse al menos estas condiciones:
+
+- comprador puede registrarse, verificar correo, iniciar/cerrar sesion y
+  recuperar contrasena;
+- carrito conserva articulos al recargar y al autenticarse;
+- precios, descuentos, inventario, impuesto y envio coinciden con backend;
+- pedido se crea una sola vez aunque falle o se repita el pago;
+- proveedor real confirma aprobado/rechazado mediante flujo seguro;
+- comprador puede consultar al menos sus pedidos;
+- cada rol administrativo puede hacer solo lo permitido;
+- dos empresas simultaneas no comparten datos, marca, carrito ni permisos;
+- rutas funcionan al abrirse y recargarse directamente en produccion;
+- pruebas automatizadas cubren sesion, carrito, checkout, pagos y permisos;
+- revision responsive, accesibilidad y seguridad aprobada;
+- logs, backups y monitoreo configurados.
+
+## 23. Prompt para continuar en una conversacion nueva
 
 ```text
-Lee primero CONTEXTO_CONTINUACION.md y despues revisa el codigo relacionado con
-la tarea. No recuperes endpoints ni componentes marcados como obsoletos. El
-codigo actual y REGISTRO_CAMBIOS_CONTINUOS.md tienen prioridad sobre briefs
-antiguos. Antes de editar, verifica el estado de Git para no perder cambios
-locales. Continua respetando multiempresa, branding dinamico y las reglas de
-impuesto y envio de cada empresa.
+Lee primero CONTEXTO_CONTINUACION.md. Despues revisa el codigo relacionado con
+la tarea y, si toca administracion, API_PANEL_ADMINISTRATIVO.md. El codigo actual
+tiene prioridad sobre notas antiguas. No recuperes endpoints o componentes
+marcados como obsoletos. Antes de editar revisa Git. Conserva multiempresa,
+branding dinamico, aislamiento por rol y las reglas de impuesto, inventario,
+envio y precios calculados por el backend. Al terminar actualiza en este archivo
+el estado de la funcion y la fecha de verificacion si el cambio es relevante.
 ```
 
-## 24. Lista de traslado a otra PC
+## 24. Documentos relacionados
 
-1. Revisar secretos y credenciales temporales en documentos locales.
-2. Hacer commit del frontend.
-3. Hacer push del frontend.
-4. Hacer commit del backend.
-5. Hacer push del backend.
-6. Respaldar de forma privada `backend/db.sqlite3` si se necesitan los datos.
-7. Respaldar de forma privada `backend/media/` si se necesitan las imagenes.
-8. Guardar de forma segura las variables necesarias del `.env`.
-9. Clonar ambos repositorios en la nueva PC.
-10. Recrear `.venv` y `node_modules`.
-11. Restaurar base, media y `.env` sin subirlos a GitHub.
-12. Ejecutar migraciones.
-13. Ejecutar pruebas del backend.
-14. Ejecutar `npm run build` en frontend.
-15. Probar Analiza y una segunda empresa.
-16. Probar login, carrito invitado, fusion, favoritos, checkout y pago.
-
+- `API_PANEL_ADMINISTRATIVO.md`: contrato detallado del panel.
+- `REGISTRO_CAMBIOS_CONTINUOS.md`: historial reciente de backend y frontend.
+- `BRIEF_FRONTEND.md`: contexto historico anterior al panel; usar con cautela.
+- `INSTRUCCIONES_CODEX_PROYECTO.md`: requisitos generales originales.
+- `README.md`: actualmente solo identifica el repositorio y debe ampliarse en
+  una tarea posterior si se desea una guia publica corta.

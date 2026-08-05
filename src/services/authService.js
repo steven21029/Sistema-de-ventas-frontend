@@ -21,6 +21,43 @@ export async function loginUsuario(email, password) {
   return payload;
 }
 
+export async function registrarComprador({
+  aceptaPrivacidad,
+  aceptaTerminos,
+  email,
+  empresaSlug,
+  nombreCompleto,
+  numeroIdentidad,
+  password,
+  passwordConfirmacion,
+  telefono,
+}) {
+  return apiPost("/usuarios/registro-comprador/", {
+    empresa_slug: empresaSlug,
+    nombre_completo: nombreCompleto.trim(),
+    email: email.trim(),
+    telefono: telefono.trim(),
+    numero_identidad: numeroIdentidad.trim(),
+    password,
+    password_confirmacion: passwordConfirmacion,
+    acepta_terminos: aceptaTerminos === true,
+    acepta_privacidad: aceptaPrivacidad === true,
+  });
+}
+
+export async function verificarCorreo(email, codigo) {
+  return apiPost("/usuarios/verificar-correo/", {
+    email: email.trim(),
+    codigo: codigo.trim(),
+  });
+}
+
+export async function reenviarVerificacion(email) {
+  return apiPost("/usuarios/reenviar-verificacion/", {
+    email: email.trim(),
+  });
+}
+
 export async function getMiPerfil() {
   return apiGet("/usuarios/perfiles/mi-perfil/", undefined, {
     auth: true,
