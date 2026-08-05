@@ -1249,6 +1249,23 @@ Archivo modificado:
 - `CONTEXTO_CONTINUACION.md`.
 - `REGISTRO_CAMBIOS_CONTINUOS.md`.
 
+## 2026-08-05 - Simetria de tarjetas compactas en Servicios
+
+Estado: implementado en frontend.
+
+Cambios:
+
+- Categoria y disponibilidad se distribuyen en lineas centradas cuando la
+  empresa oculta las imagenes de producto.
+- Los textos se ajustan dentro del ancho de la tarjeta sin superponerse.
+- Todas las tarjetas de la cuadricula compacta comparten altura y mantienen el
+  precio y el boton de compra alineados en la base.
+
+Archivos modificados:
+
+- `src/components/catalog/ProductCard.module.css`.
+- `src/pages/DynamicPages.module.css`.
+
 Verificacion:
 
 - `npm run build`: correcto.

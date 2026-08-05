@@ -303,6 +303,8 @@ Archivo: `src/pages/ServiceTypesPage.jsx`.
 - Durante una busqueda carga los detalles necesarios y abre coincidencias.
 - Familias y categorias admiten imagen propia.
 - Productos usan tarjeta compacta con favorito y carrito.
+- Las tarjetas compactas mantienen igual altura, ajustan el texto dentro de su
+  ancho y alinean el boton de compra en la base.
 - No crea subpaginas separadas por familia.
 - La familia oficial `Examenes` conserva el acordeon completo de familia,
   categoria y examen dentro de Servicios.
