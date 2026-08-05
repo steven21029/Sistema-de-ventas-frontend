@@ -31,9 +31,20 @@ export async function getProductosMasVendidos(empresaSlug) {
 }
 
 export async function getProductosCatalogo(empresaSlug, filters = {}) {
-  const endpoint =
-    filters.catalogType === "examenes" ? "/catalogo/examenes/" : "/catalogo/productos/";
-  const payload = await apiGet(endpoint, {
+  if (filters.catalogType === "examenes") {
+    return getExamenes(empresaSlug, filters);
+  }
+
+  const payload = await apiGet("/catalogo/productos/", {
+    empresa_slug: empresaSlug,
+    buscar: filters.buscar,
+  });
+
+  return asArray(payload);
+}
+
+export async function getExamenes(empresaSlug, filters = {}) {
+  const payload = await apiGet("/catalogo/examenes/", {
     empresa_slug: empresaSlug,
     buscar: filters.buscar,
   });

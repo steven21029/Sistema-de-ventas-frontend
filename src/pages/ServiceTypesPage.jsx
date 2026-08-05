@@ -2,7 +2,11 @@ import { ChevronDown, Search, ShoppingBag, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ProductCard from "../components/catalog/ProductCard";
 import { resolveMediaUrl } from "../services/apiClient";
-import { getServicioDetalle, getServiciosPagina } from "../services/paginasService";
+import {
+  getExamenes,
+  getServicioDetalle,
+  getServiciosPagina,
+} from "../services/paginasService";
 import { normalizeSearchText, textIncludesSearch } from "../utils/search";
 import styles from "./DynamicPages.module.css";
 
@@ -47,6 +51,53 @@ function isExamService(service) {
     service?.ruta,
     getServiceKey(service),
   ].some(hasExamWord);
+}
+
+function buildExamServiceDetail(service, exams) {
+  const categories = sortByOrder(asList(service?.categorias)).map((category) => ({
+    ...category,
+    productos: [],
+  }));
+  const categoriesByKey = new Map(
+    categories.map((category) => [getCategoryKey(category), category]),
+  );
+
+  asList(exams).forEach((exam) => {
+    const categoryName = exam?.categoria_nombre || "Otros examenes";
+    const categoryKey = slugify(categoryName) || "otros-examenes";
+    let category = categoriesByKey.get(categoryKey);
+
+    if (!category) {
+      category = {
+        clave: categoryKey,
+        nombre: categoryName,
+        orden: categories.length,
+        productos: [],
+      };
+      categories.push(category);
+      categoriesByKey.set(categoryKey, category);
+    }
+
+    category.productos.push(exam);
+  });
+
+  return {
+    ...service,
+    categorias: categories.map((category) => ({
+      ...category,
+      cantidad_productos: category.productos.length,
+    })),
+  };
+}
+
+async function getServiceDetail(empresaSlug, service) {
+  if (isExamService(service)) {
+    const exams = await getExamenes(empresaSlug);
+    return buildExamServiceDetail(service, exams);
+  }
+
+  const serviceKey = getServiceKey(service);
+  return getServicioDetalle(empresaSlug, serviceKey || service.nombre);
 }
 
 function getItemName(item) {
@@ -104,10 +155,7 @@ function ServiceTypesPage({
   const empresaSlugRef = useRef(empresaSlug);
   const normalizedSearch = useMemo(() => normalizeSearchText(searchQuery), [searchQuery]);
   const isSearching = Boolean(normalizedSearch);
-  const serviceItems = useMemo(
-    () => items.filter((item) => !isExamService(item)),
-    [items],
-  );
+  const serviceItems = items;
 
   useEffect(() => {
     empresaSlugRef.current = empresaSlug;
@@ -190,10 +238,7 @@ function ServiceTypesPage({
           const serviceKey = getServiceKey(service);
 
           try {
-            const payload = await getServicioDetalle(
-              requestEmpresaSlug,
-              serviceKey || service.nombre,
-            );
+            const payload = await getServiceDetail(requestEmpresaSlug, service);
 
             return { payload, serviceKey };
           } catch {
@@ -353,7 +398,6 @@ function ServiceTypesPage({
 
     if (
       !empresaSlug ||
-      isExamService(service) ||
       hasOwnDetail(detailsByKey, serviceKey) ||
       loadingDetails[serviceKey]
     ) {
@@ -364,7 +408,7 @@ function ServiceTypesPage({
     setDetailErrors((current) => ({ ...current, [serviceKey]: "" }));
 
     try {
-      const payload = await getServicioDetalle(empresaSlug, serviceKey || service.nombre);
+      const payload = await getServiceDetail(empresaSlug, service);
 
       setDetailsByKey((current) => ({ ...current, [serviceKey]: payload }));
     } catch {

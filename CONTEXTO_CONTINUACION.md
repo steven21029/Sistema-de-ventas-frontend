@@ -304,8 +304,11 @@ Archivo: `src/pages/ServiceTypesPage.jsx`.
 - Familias y categorias admiten imagen propia.
 - Productos usan tarjeta compacta con favorito y carrito.
 - No crea subpaginas separadas por familia.
-- Omite la familia oficial `Examenes`; esa pagina usa
-  `/api/v1/catalogo/examenes/` y no `servicios/detalle`.
+- La familia oficial `Examenes` conserva el acordeon completo de familia,
+  categoria y examen dentro de Servicios.
+- Al abrir `Examenes`, carga `/api/v1/catalogo/examenes/` y agrupa la respuesta
+  por `categoria_nombre` usando el orden y las imagenes del listado general.
+- Las demas familias cargan su contenido mediante `servicios/detalle`.
 
 ### 9.5 Promociones
 
@@ -758,8 +761,9 @@ sola que cada flujo de negocio funcione contra datos reales.
 - Usar logo, colores, menu, contenido e imagenes del backend.
 - Usar recursos neutrales si falla la empresa publica.
 - Mantener un solo buscador contextual en el header.
-- No duplicar Examenes y Servicios con el mismo contenido.
-- Servicios no debe llamar `servicios/detalle` para la familia `Examenes`.
+- Servicios conserva los tres niveles: familia, categoria y producto o examen.
+- La familia `Examenes` usa `/catalogo/examenes/`; las demas usan
+  `servicios/detalle`.
 - Servicios usa acordeones, no subpaginas.
 - Inicio muestra solo secciones con contenido.
 - Banners y ofertas son recursos diferentes.

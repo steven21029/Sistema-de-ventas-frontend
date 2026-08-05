@@ -1221,7 +1221,7 @@ Archivo modificado:
 - `CONTEXTO_CONTINUACION.md`.
 - `REGISTRO_CAMBIOS_CONTINUOS.md`.
 
-## 2026-08-05 - Servicios excluye la rama oficial Examenes
+## 2026-08-05 - Servicios carga Examenes con su endpoint dedicado
 
 Estado: implementado en frontend y compilado.
 
@@ -1229,16 +1229,17 @@ Motivo:
 
 - La pagina Servicios podia intentar cargar el detalle de la familia
   `Examenes` mediante `servicios/detalle`, especialmente durante busquedas.
-- Ese catalogo debe vivir solo en la pagina Examenes mediante el endpoint
-  dedicado `GET /api/v1/catalogo/examenes/?empresa_slug=Analiza`.
+- Esa familia debe conservar la jerarquia visual de Servicios, pero cargar sus
+  examenes mediante el endpoint dedicado
+  `GET /api/v1/catalogo/examenes/?empresa_slug=Analiza`.
 
 Cambios:
 
-- `ServiceTypesPage` filtra la familia oficial `Examenes` del listado visual de
-  Servicios.
-- `ServiceTypesPage` tambien bloquea defensivamente `loadDetail` para esa
-  familia, evitando llamadas a
-  `/api/v1/catalogo/servicios/detalle/?servicio=examenes`.
+- `ServiceTypesPage` mantiene la familia oficial `Examenes` dentro del acordeon
+  de Servicios.
+- Al abrirla consulta `/api/v1/catalogo/examenes/` y agrupa los examenes por
+  `categoria_nombre` dentro de las categorias del listado general.
+- Las demas familias conservan su carga mediante `servicios/detalle`.
 - Las ramas especificas de servicios, como `imagenes`, siguen usando
   `servicios/detalle`.
 
