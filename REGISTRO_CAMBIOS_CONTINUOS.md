@@ -1329,3 +1329,226 @@ Archivos modificados en frontend:
 Verificacion:
 
 - `npm run build`: correcto.
+
+## 2026-08-06 - Auditoria responsive integral
+
+Estado: implementado y verificado en frontend.
+
+Problema corregido:
+
+- En telefonos, Mi cuenta se abria como una hoja casi completa y enfocaba el
+  correo automaticamente. Los campos heredaban tipografias menores de 16 px,
+  lo que podia activar el zoom del navegador movil.
+
+Cambios:
+
+- El login movil ahora es un dialogo centrado, compacto y con margen visible.
+- Su altura en una pantalla de 320 x 720 bajo de 548 px a 421 px.
+- Crear cuenta conserva desplazamiento interno y usa `100dvh` para respetar el
+  espacio realmente disponible en el telefono.
+- Se retiro `autoFocus` de login, registro y verificacion para no abrir el
+  teclado ni ampliar la pagina al mostrar el dialogo.
+- Los controles de autenticacion, busqueda, contacto, checkout y panel usan un
+  minimo visual de 16 px en movil para evitar zoom automatico.
+- El menu principal horizontal desplaza la seccion activa al centro cuando una
+  ruta se abre o recarga directamente.
+
+Archivos modificados:
+
+- `src/components/auth/AuthDialog.jsx`.
+- `src/components/auth/AuthDialog.module.css`.
+- `src/components/layout/Header.module.css`.
+- `src/components/layout/MainNav.jsx`.
+- `src/pages/DynamicPages.module.css`.
+- `src/pages/CheckoutPages.module.css`.
+- `src/admin/AdminApp.module.css`.
+- `src/styles/base.css`.
+
+Verificacion:
+
+- Rutas publicas revisadas: Inicio, Servicios, Examenes, Perfiles,
+  Promociones, Sucursales, Contacto, Sobre nosotros, Checkout y Pago.
+- Estados revisados: login, crear cuenta, carrito y favoritos.
+- Las 18 secciones administrativas, el menu lateral y el editor de productos
+  se revisaron con datos simulados solo dentro del navegador de prueba.
+- Viewports revisados: 320 x 720, 375 x 812, 768 x 1024 y 1440 x 900.
+- Ninguna pantalla genero desbordamiento horizontal.
+- `npm run build`: correcto; Vite transformo 1641 modulos.
+
+## 2026-08-06 - Dashboard comercial con comparacion mensual
+
+Estado: implementado y verificado en frontend.
+
+Datos utilizados:
+
+- `GET /api/v1/pedidos/pedidos/` con `fecha_desde`, `fecha_hasta`, orden y
+  paginacion completa.
+- Una venta confirmada corresponde a `estado_pago=pagado` o `aprobado`.
+- Los totales monetarios proceden del campo historico `total` del pedido.
+
+Indicadores agregados:
+
+- Ingresos confirmados del mes.
+- Numero de ventas confirmadas.
+- Ticket promedio.
+- Monto y cantidad de pedidos pendientes de pago.
+- Variacion de ingresos y ventas frente al mes anterior.
+- Ingresos y ventas acumulados de los ultimos seis meses.
+
+Visualizaciones y operacion:
+
+- Grafica de barras con ingresos confirmados por mes.
+- Distribucion de pedidos confirmados, pendientes, rechazados y otros estados.
+- Accesos compactos a catalogo, usuarios y mensajes.
+- Se conservaron pedidos recientes, mensajes e inventario.
+- Si la consulta de pedidos falla, el panel muestra una advertencia sin bloquear
+  los demas modulos.
+
+Archivos modificados:
+
+- `src/admin/AdminDashboard.jsx`.
+- `src/admin/AdminApp.module.css`.
+- `CONTEXTO_CONTINUACION.md`.
+- `REGISTRO_CAMBIOS_CONTINUOS.md`.
+
+Verificacion:
+
+- `npm run build`: correcto; Vite transformo 1641 modulos.
+- Vista validada con pedidos simulados en 320, 768 y 1440 px.
+- Ningun viewport genero desbordamiento horizontal.
+
+Pendiente de backend para reportes formales:
+
+- Resumen consolidado de ventas, pagos, impuestos, descuentos y devoluciones.
+- Exportacion autorizada de CSV, XLSX y PDF por empresa y rango de fechas.
+- Totales oficiales calculados del lado servidor para cierres contables.
+
+## 2026-08-06 - Consumo de resumen oficial y descarga de reportes
+
+Estado: implementado y verificado en frontend.
+
+Integracion realizada:
+
+- El dashboard consume `GET /api/v1/reportes/resumen-ventas/` para el mes actual
+  y para la serie agrupada de los ultimos seis meses.
+- Los ingresos, ventas, ticket promedio, pendientes, variaciones, estados,
+  subtotal, descuentos, impuestos, envios y productos mas vendidos proceden del
+  resumen calculado por el backend.
+- Se elimino la descarga paginada de todos los pedidos para calcular las
+  estadisticas en React.
+- Pedidos recientes usa una sola pagina de cinco registros.
+
+Descarga de reportes:
+
+- Se agrego un centro de reportes con rango de fechas y contenido `resumen`,
+  `ventas`, `pagos` o `impuestos`.
+- Permite descargar `PDF`, `XLSX` y `CSV` mediante
+  `GET /api/v1/reportes/ventas/exportar/`.
+- La descarga conserva autenticacion JWT, renovacion automatica ante `401`,
+  detalle de errores y nombre de archivo de `Content-Disposition`.
+- Se valida que la fecha inicial no sea posterior a la final y que el archivo
+  recibido no este vacio.
+
+Archivos modificados:
+
+- `src/services/apiClient.js`.
+- `src/services/adminService.js`.
+- `src/admin/AdminDashboard.jsx`.
+- `src/admin/AdminApp.module.css`.
+- `CONTEXTO_CONTINUACION.md`.
+- `REGISTRO_CAMBIOS_CONTINUOS.md`.
+
+Verificacion:
+
+- Las rutas locales de resumen y exportacion respondieron `401` sin credenciales,
+  confirmando que existen y estan protegidas; ninguna respondio `404`.
+- Prueba de navegador con el contrato simulado en 320, 768 y 1440 px: sin
+  desbordamiento horizontal ni errores de consola.
+- La prueba de descarga genero `ventas-analiza.csv` con el nombre enviado por el
+  servidor.
+- `npm run build`: correcto; Vite transformo 1641 modulos.
+
+Pendiente operativo:
+
+- Probar los tres formatos y los cuatro tipos con una sesion administrativa y
+  datos reales de cada empresa.
+- Validar permisos con superusuario, administrador maestro, administrador de
+  empresa, gerente y comprador.
+
+## 2026-08-06 - Compatibilidad de cabecera Accept en reportes
+
+Estado: corregido en frontend.
+
+- La descarga enviaba una lista cerrada de tipos MIME en `Accept`.
+- Django REST Framework rechazaba la negociacion antes de ejecutar la
+  exportacion y respondia que no podia satisfacer esa cabecera.
+- La descarga ahora usa `Accept: */*`; el formato solicitado continua definido
+  explicitamente por `formato=pdf`, `formato=xlsx` o `formato=csv`.
+
+## 2026-08-06 - Periodos fijos y bloqueo de fechas futuras
+
+Estado: implementado y verificado en frontend.
+
+- El formulario ya no solicita fecha final.
+- Solicita fecha inicial y periodo semanal, quincenal o mensual.
+- Semanal calcula 7 dias inclusivos y quincenal 15 dias inclusivos.
+- Mensual calcula un mes desde la fecha inicial y usa una fecha final inclusiva.
+- La fecha final calculada se presenta antes de descargar.
+- Si el periodo incluye una fecha futura, el boton queda deshabilitado y se
+  informa la fecha inicial maxima permitida para ese tipo de reporte.
+- El endpoint conserva el contrato `fecha_desde` y `fecha_hasta`; ambas fechas
+  son calculadas y enviadas por React.
+
+Verificacion:
+
+- Un reporte semanal iniciado el 31/07/2026 envio
+  `fecha_desde=2026-07-31&fecha_hasta=2026-08-06`.
+- El intento semanal desde 01/08/2026 quedo bloqueado por terminar el
+  07/08/2026, posterior al dia de la prueba.
+- Descarga CSV verificada y sin desbordamiento horizontal a 320 px.
+
+## 2026-08-06 - Pago en linea o en sucursal con prefactura
+
+Estado: implementado y verificado en frontend con el contrato
+`API_PAGO_EN_SUCURSAL.md`.
+
+Checkout:
+
+- Se agregaron las opciones `Pagar en linea` y `Pagar en sucursal`.
+- El flujo en linea conserva `POST /api/v1/pagos/iniciar/`.
+- El flujo presencial consulta sucursales activas y exige seleccionar una.
+- Tras crear el pedido, envia solo `sucursal_id` a
+  `POST /api/v1/pedidos/pedidos/{id}/pago-en-sucursal/`.
+- Un pedido creado se conserva para reintentar si falla el inicio del pago, sin
+  duplicarlo.
+
+Prefactura y correo:
+
+- La respuesta oficial de pedido, pago y prefactura se conserva durante la
+  navegacion hacia `/pago/{referencia}`.
+- El PDF se descarga con JWT desde
+  `GET /api/v1/pedidos/pedidos/{id}/prefactura/pdf/`.
+- El reenvio se solicita a
+  `POST /api/v1/pedidos/pedidos/{id}/prefactura/reenviar-correo/` sin enviar una
+  direccion desde React.
+- La pantalla muestra el correo enmascarado y la sucursal de pago devueltos o
+  asociados por el backend.
+- React no genera archivos, no envia correos y no cambia el pago a aprobado.
+
+Archivos modificados:
+
+- `src/services/pagoService.js`.
+- `src/pages/CheckoutPage.jsx`.
+- `src/pages/PaymentPage.jsx`.
+- `src/pages/CheckoutPages.module.css`.
+- `CONTEXTO_CONTINUACION.md`.
+- `REGISTRO_CAMBIOS_CONTINUOS.md`.
+
+Verificacion:
+
+- Recorrido simulado completo: carrito autenticado, sucursal, pedido, pago
+  presencial, pantalla de estado, descarga y reenvio.
+- Las llamadas de inicio, PDF y reenvio incluyeron `Authorization: Bearer`.
+- La descarga uso el nombre `prefactura-PED-001.pdf` enviado por el servidor.
+- Viewports 320 y 1440 px sin desbordamiento horizontal ni errores de consola.
+- `npm run build`: correcto; Vite transformo 1641 modulos.

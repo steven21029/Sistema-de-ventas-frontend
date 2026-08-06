@@ -30,9 +30,13 @@ function buildUrl(path, params = {}) {
   return url;
 }
 
-async function readResponse(response) {
+async function readResponse(response, responseType = "auto") {
   if (response.status === 204) {
     return null;
+  }
+
+  if (responseType === "blob" && response.ok) {
+    return response.blob();
   }
 
   const contentType = response.headers.get("content-type") || "";
@@ -120,7 +124,7 @@ async function performRequest(path, options = {}) {
           : undefined,
       signal: requestSignal.signal,
     });
-    const payload = await readResponse(response);
+    const payload = await readResponse(response, options.responseType);
 
     return { payload, response };
   } catch (error) {
@@ -138,7 +142,7 @@ async function performRequest(path, options = {}) {
   }
 }
 
-async function request(path, options = {}) {
+async function requestResult(path, options = {}) {
   let result = await performRequest(path, options);
 
   if (result.response.status === 401 && options.auth && options.retryAuth !== false) {
@@ -165,7 +169,28 @@ async function request(path, options = {}) {
     throw new ApiError(defaultMessage, result.response.status, result.payload);
   }
 
+  return result;
+}
+
+async function request(path, options = {}) {
+  const result = await requestResult(path, options);
   return result.payload;
+}
+
+function getDownloadFilename(contentDisposition) {
+  if (!contentDisposition) return "";
+
+  const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8Match?.[1]) {
+    try {
+      return decodeURIComponent(utf8Match[1].trim().replace(/\+/g, "%20"));
+    } catch {
+      return utf8Match[1].trim();
+    }
+  }
+
+  const basicMatch = contentDisposition.match(/filename="?([^";]+)"?/i);
+  return basicMatch?.[1]?.trim() || "";
 }
 
 export function setApiAccessToken(token) {
@@ -250,6 +275,25 @@ export function apiDelete(path, options = {}) {
     ...options,
     method: "DELETE",
   });
+}
+
+export async function apiDownload(path, params, options = {}) {
+  const { payload, response } = await requestResult(path, {
+    ...options,
+    method: "GET",
+    params,
+    responseType: "blob",
+    headers: {
+      Accept: "*/*",
+      ...(options.headers || {}),
+    },
+  });
+
+  return {
+    blob: payload,
+    contentType: response.headers.get("content-type") || "application/octet-stream",
+    filename: getDownloadFilename(response.headers.get("content-disposition")),
+  };
 }
 
 export function asArray(payload) {

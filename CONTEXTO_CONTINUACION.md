@@ -41,7 +41,7 @@ Reglas de precedencia:
 | Carrito | Parcial | Invitado en `localStorage`, autenticado en backend, calculo de precios e inventario | Resolver y verificar definitivamente la fusion invitado -> usuario |
 | Checkout y pedidos | Implementado con pendientes | Retiro, envio local/nacional, pedido congelado y reintento de pago | Tarifa real de envio, QA de errores y portal del comprador |
 | Pagos | Parcial | Inicio, consulta, sondeo de estado y reintento | Integrar proveedor real, redireccion automatica y validar webhooks de extremo a extremo |
-| Panel administrativo | Implementado | Dashboard y gestion de catalogo, promociones, usuarios, empresa, inventario y contenido | QA por rol, filtros avanzados, reportes, exportaciones y automatizacion de pruebas |
+| Panel administrativo | Implementado | Dashboard, reportes descargables y gestion de catalogo, promociones, usuarios, empresa, inventario y contenido | QA por rol, filtros avanzados y automatizacion de pruebas |
 | Despliegue | Configurado, no cerrado | Vercel para frontend, Render para API/media y fallback SPA | Validar produccion, dominios, HTTPS, cookies, CORS/CSRF, correo, almacenamiento y monitoreo |
 | Calidad automatizada | Pendiente | `npm run build` funciona | No hay scripts de test, lint ni pruebas E2E |
 
@@ -443,6 +443,9 @@ entrada alternativa o campos antiguos `producto_nombre`.
 - Solicita destinatario, telefono, departamento, municipio, direccion y
   referencia cuando corresponde.
 - Crea el pedido desde el carrito persistente.
+- Permite elegir `Pagar en linea` o `Pagar en sucursal` antes de finalizar.
+- El pago presencial carga las sucursales activas de la empresa y exige una
+  seleccion antes de solicitar la prefactura.
 - Si crear el pago falla despues de crear el pedido, guarda el pedido pendiente
   en `sessionStorage` y permite reintentar sin duplicarlo.
 - El pedido devuelto pasa a ser la fotografia comercial congelada.
@@ -462,6 +465,15 @@ Pendientes del checkout:
 - Actualizacion manual.
 - Reintento de un pago rechazado cuando existe contexto local.
 - Muestra `url_pago` si el backend devuelve una URL HTTP/HTTPS.
+- El pago en linea conserva `POST /api/v1/pagos/iniciar/` sin cambios.
+- El pago presencial usa
+  `POST /api/v1/pedidos/pedidos/{id}/pago-en-sucursal/` y presenta la respuesta
+  oficial del pedido, pago y prefactura.
+- La pantalla de pago presencial descarga el PDF autenticado desde
+  `GET /api/v1/pedidos/pedidos/{id}/prefactura/pdf/` y puede solicitar el
+  reenvio mediante `POST .../prefactura/reenviar-correo/`.
+- React no genera el PDF, no recibe correos alternativos, no envia mensajes y no
+  confirma el pago presencial; todo eso permanece en el backend.
 
 Estado parcial:
 
@@ -488,10 +500,34 @@ Entrada principal: `src/admin/AdminApp.jsx`.
 
 ### 13.2 Dashboard
 
-- Conteo de catalogo activo, usuarios, pedidos y mensajes nuevos.
+- Ingresos del mes, ventas confirmadas, ticket promedio y monto pendiente.
+- Comparacion porcentual contra el mes anterior.
+- Grafica de ingresos confirmados de los ultimos seis meses.
+- Distribucion del mes actual entre pedidos confirmados, pendientes y rechazados.
+- Desglose de subtotal, descuentos, impuestos y envios.
+- Productos mas vendidos del periodo.
+- Los indicadores oficiales se consumen desde
+  `GET /api/v1/reportes/resumen-ventas/`; React ya no descarga todos los pedidos
+  para calcular los totales.
+- El dashboard solicita un resumen del mes actual con comparacion y otro resumen
+  agrupado por mes para la serie de los ultimos seis meses.
+- Solo la seccion Pedidos recientes conserva una consulta paginada de cinco
+  registros a `GET /api/v1/pedidos/pedidos/`.
+- El centro de reportes pide una fecha inicial y un periodo `semanal` de 7 dias,
+  `quincenal` de 15 dias o `mensual` de un mes contado desde esa fecha. React
+  calcula la fecha final sin pedirla al usuario.
+- No se puede descargar un periodo que incluya fechas posteriores al dia actual;
+  la fecha inicial maxima cambia automaticamente segun el periodo elegido.
+- El usuario tambien elige contenido `resumen`, `ventas`, `pagos` o `impuestos`,
+  y formato `PDF`, `XLSX` o `CSV`.
+- Las descargas usan `GET /api/v1/reportes/ventas/exportar/`, conservan la
+  autenticacion JWT y respetan el nombre indicado por `Content-Disposition`.
+- Conteo de catalogo activo, usuarios y mensajes nuevos.
 - Pedidos recientes.
 - Mensajes pendientes de revision.
 - Resumen de inventario, agotados y bajo stock cuando aplica.
+- Los totales comerciales y contables mostrados proceden del backend; el
+  frontend solo presenta y descarga la informacion autorizada para la empresa.
 
 ### 13.3 Modulos administrativos
 
@@ -532,14 +568,19 @@ Comportamiento comun del panel:
 - Probar aislamiento cambiando slugs/IDs manualmente.
 - Exponer filtros avanzados ya disponibles en APIs de pedidos, pagos, usuarios,
   fechas y estados; hoy la interfaz generica usa principalmente busqueda.
-- Incorporar reportes comerciales y graficas si permanecen en el alcance.
-- Exportar pedidos, pagos, inventario o usuarios si el negocio lo requiere.
+- Probar resumen y exportaciones con datos reales, periodos grandes, todos los
+  formatos y cada rol administrativo autorizado.
+- Ampliar reportes a inventario o usuarios si entran en el alcance; la primera
+  version cubre resumen, ventas, pagos e impuestos.
+- Definir devoluciones y cierres contables si deben formar parte de reportes
+  posteriores.
 - Incorporar historial detallado de movimientos de inventario.
 - Definir flujo operativo para cambiar estados de pedido; actualmente pedidos
   y pagos son deliberadamente de solo lectura.
 - Agregar notificaciones o indicadores de actividad en tiempo real.
 - Pruebas automatizadas de CRUD, uploads, paginacion y permisos.
-- Revision visual del panel en movil y con tablas extensas.
+- Repetir la revision visual del panel con datos reales y tablas extensas; la
+  estructura vacia y los formularios ya fueron validados en movil.
 
 ## 14. Servicios y contratos consumidos
 
@@ -720,7 +761,8 @@ sola que cada flujo de negocio funcione contra datos reales.
 
 1. Crear perfil del comprador e historial de pedidos.
 2. Decidir e implementar direcciones guardadas.
-3. Definir prefactura/recibo descargable y PDF si sigue en alcance.
+3. Probar prefactura PDF, correo y pago presencial con datos reales y todos los
+   estados de error del backend.
 4. Agregar filtros avanzados y exportaciones al panel.
 5. Definir reportes, graficas e indicadores comerciales.
 6. Agregar historial visible de movimientos de inventario.
@@ -768,6 +810,9 @@ sola que cada flujo de negocio funcione contra datos reales.
 ## 21. Decisiones que deben conservarse
 
 - Mantener el sistema multiempresa; no quemar datos de Analiza para todos.
+- Este repositorio y sus tareas son exclusivamente de frontend. Si un cambio
+  requiere backend, describirlo para el responsable sin abrir, ejecutar ni
+  modificar el proyecto backend.
 - Usar logo, colores, menu, contenido e imagenes del backend.
 - Usar recursos neutrales si falla la empresa publica.
 - Mantener un solo buscador contextual en el header.

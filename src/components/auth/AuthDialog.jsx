@@ -416,7 +416,6 @@ function AuthDialog({
                       value={email}
                       onChange={(event) => setEmail(event.target.value)}
                       autoComplete="email"
-                      autoFocus
                       required
                     />
                   </span>
@@ -472,7 +471,6 @@ function AuthDialog({
                         updateRegisterField("nombreCompleto", event.target.value)
                       }
                       autoComplete="name"
-                      autoFocus
                       required
                     />
                   </span>
@@ -631,7 +629,6 @@ function AuthDialog({
                       value={verificationEmail}
                       onChange={(event) => setVerificationEmail(event.target.value)}
                       autoComplete="email"
-                      autoFocus
                       required
                     />
                   </span>

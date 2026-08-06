@@ -339,6 +339,7 @@
   color: var(--color-ink);
   background: white;
   font: inherit;
+  font-size: 16px;
 }
 
 .field input {

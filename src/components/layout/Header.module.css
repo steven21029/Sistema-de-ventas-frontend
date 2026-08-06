@@ -69,6 +69,7 @@
   outline: 0;
   color: var(--color-ink);
   background: transparent;
+  font-size: 16px;
 }
 
 .searchBox input::placeholder {

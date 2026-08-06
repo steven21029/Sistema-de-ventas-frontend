@@ -150,7 +150,8 @@
   margin-bottom: 28px;
 }
 
-.deliverySwitch {
+.deliverySwitch,
+.paymentMethodSwitch {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0;
@@ -159,7 +160,8 @@
   overflow: hidden;
 }
 
-.deliverySwitch label {
+.deliverySwitch label,
+.paymentMethodSwitch label {
   min-height: 54px;
   display: flex;
   align-items: center;
@@ -172,24 +174,79 @@
   cursor: pointer;
 }
 
-.deliverySwitch label + label {
+.deliverySwitch label + label,
+.paymentMethodSwitch label + label {
   border-left: 1px solid var(--color-line);
 }
 
-.deliverySwitch input {
+.deliverySwitch input,
+.paymentMethodSwitch input {
   position: absolute;
   opacity: 0;
   pointer-events: none;
 }
 
-.deliverySwitch label:focus-within {
+.deliverySwitch label:focus-within,
+.paymentMethodSwitch label:focus-within {
   outline: 3px solid rgba(209, 57, 61, 0.25);
   outline-offset: -3px;
 }
 
-.deliverySwitch .selectedMode {
+.deliverySwitch .selectedMode,
+.paymentMethodSwitch .selectedMode {
   color: white;
   background: var(--color-blue);
+}
+
+.branchPaymentFields {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 18px;
+  border: 1px solid var(--color-line);
+  border-left: 5px solid var(--color-blue);
+  background: var(--color-surface-soft);
+}
+
+.branchPaymentFields label {
+  display: grid;
+  gap: 7px;
+  color: var(--color-blue);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.branchPaymentFields select {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 13px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  color: var(--color-ink);
+  background: var(--color-surface);
+  font-size: 16px;
+}
+
+.branchPaymentFields > span {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.branchPaymentFields > span svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--color-blue);
+}
+
+.branchPaymentFields > p {
+  margin: 0;
+  color: var(--color-red-dark);
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .pickupNotice {
@@ -250,6 +307,7 @@
   color: var(--color-ink);
   background: var(--color-surface);
   outline: 0;
+  font-size: 16px;
   font-weight: 400;
 }
 
@@ -397,6 +455,12 @@
   line-height: 1.45;
 }
 
+.feedbackSuccess {
+  border-left-color: #147a4a;
+  color: #12623d;
+  background: #e8f6ee;
+}
+
 .payButton,
 .providerButton,
 .secondaryButton {
@@ -417,7 +481,12 @@
   box-shadow: 0 12px 24px rgba(209, 57, 61, 0.2);
 }
 
-.payButton:disabled,
+.payButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.payButton[data-loading="true"],
 .providerButton:disabled,
 .secondaryButton:disabled {
   cursor: wait;
@@ -555,8 +624,35 @@
   margin: 20px 30px 0;
 }
 
+.prefacturaNotice {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  margin: 22px 30px 0;
+  padding: 16px;
+  border-left: 5px solid var(--color-blue);
+  color: var(--color-blue);
+  background: var(--color-surface-soft);
+}
+
+.prefacturaNotice > svg {
+  flex: 0 0 auto;
+}
+
+.prefacturaNotice > div {
+  display: grid;
+  gap: 5px;
+}
+
+.prefacturaNotice span {
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .paymentActions {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   padding: 24px 30px;
 }
@@ -564,6 +660,7 @@
 .providerButton,
 .secondaryButton {
   flex: 1;
+  min-width: 170px;
   padding: 0 18px;
 }
 
@@ -639,11 +736,13 @@
   }
 
   .deliverySwitch,
+  .paymentMethodSwitch,
   .fieldGrid {
     grid-template-columns: 1fr;
   }
 
-  .deliverySwitch label + label {
+  .deliverySwitch label + label,
+  .paymentMethodSwitch label + label {
     border-top: 1px solid var(--color-line);
     border-left: 0;
   }
@@ -686,6 +785,10 @@
   }
 
   .paymentReceipt > .feedback {
+    margin-inline: 18px;
+  }
+
+  .prefacturaNotice {
     margin-inline: 18px;
   }
 }

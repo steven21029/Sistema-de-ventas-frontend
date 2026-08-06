@@ -1,5 +1,6 @@
 import {
   apiDelete,
+  apiDownload,
   apiGet,
   apiPatch,
   apiPost,
@@ -124,6 +125,39 @@ export function getInventorySummary(empresaSlug) {
     { empresa_slug: empresaSlug },
     ADMIN_REQUEST_OPTIONS,
   );
+}
+
+export function getSalesSummary(empresaSlug, filters = {}) {
+  return apiGet(
+    "/reportes/resumen-ventas/",
+    {
+      empresa_slug: empresaSlug,
+      ...filters,
+    },
+    ADMIN_REQUEST_OPTIONS,
+  );
+}
+
+export async function downloadSalesReport(empresaSlug, filters) {
+  const format = String(filters.formato || "pdf").toLowerCase();
+  const type = String(filters.tipo || "resumen").toLowerCase();
+  const result = await apiDownload(
+    "/reportes/ventas/exportar/",
+    {
+      empresa_slug: empresaSlug,
+      ...filters,
+      formato: format,
+      tipo: type,
+    },
+    ADMIN_REQUEST_OPTIONS,
+  );
+
+  return {
+    ...result,
+    filename:
+      result.filename ||
+      `reporte-${type}-${filters.fecha_desde}-${filters.fecha_hasta}.${format}`,
+  };
 }
 
 export function adjustInventory(empresaSlug, payload) {

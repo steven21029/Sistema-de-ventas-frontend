@@ -1,6 +1,8 @@
 import {
   ArrowLeft,
   Building2,
+  CreditCard,
+  Mail,
   MapPin,
   PackageCheck,
   ShieldCheck,
@@ -9,7 +11,8 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import PurchaseSteps from "../components/checkout/PurchaseSteps";
-import { iniciarPago } from "../services/pagoService";
+import { iniciarPago, iniciarPagoEnSucursal } from "../services/pagoService";
+import { getSucursales } from "../services/paginasService";
 import { generarPedidoDesdeCarrito } from "../services/pedidoService";
 import { getApiErrorMessage } from "../utils/apiError";
 import { formatMoney, toNumber } from "../utils/money";
@@ -66,6 +69,11 @@ function CheckoutPage({
     referencia_entrega: "",
   }));
   const [pendingOrder, setPendingOrder] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState("en_linea");
+  const [branches, setBranches] = useState([]);
+  const [selectedBranchId, setSelectedBranchId] = useState("");
+  const [branchesLoading, setBranchesLoading] = useState(false);
+  const [branchesError, setBranchesError] = useState("");
   const [feedback, setFeedback] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const checkoutScope = `${empresaSlug}:${authSession?.usuario?.id || ""}`;
@@ -73,11 +81,51 @@ function CheckoutPage({
   useEffect(() => {
     setPendingOrder(getPendingOrder(checkoutScope));
     setDeliveryType(empresa?.tiene_envios ? "envio_local" : "retiro_en_local");
+    setPaymentMethod("en_linea");
+    setSelectedBranchId("");
     setFields((current) => ({
       ...current,
       ...getCustomerDefaults(authSession),
     }));
   }, [authSession, checkoutScope, empresa?.tiene_envios]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    if (paymentMethod !== "sucursal" || !empresaSlug) {
+      return undefined;
+    }
+
+    async function loadBranches() {
+      setBranchesLoading(true);
+      setBranchesError("");
+
+      try {
+        const payload = await getSucursales(empresaSlug);
+        if (isActive) {
+          setBranches(payload);
+          setSelectedBranchId((current) =>
+            payload.some((branch) => String(branch.id) === String(current))
+              ? current
+              : "",
+          );
+        }
+      } catch {
+        if (isActive) {
+          setBranches([]);
+          setSelectedBranchId("");
+          setBranchesError("No se pudieron cargar las sucursales disponibles.");
+        }
+      } finally {
+        if (isActive) setBranchesLoading(false);
+      }
+    }
+
+    loadBranches();
+    return () => {
+      isActive = false;
+    };
+  }, [empresaSlug, paymentMethod]);
 
   const displayItems = useMemo(
     () => (pendingOrder ? getOrderItems(pendingOrder) : items),
@@ -99,6 +147,12 @@ function CheckoutPage({
   const requiresAddress = deliveryType !== "retiro_en_local";
   const isBusy = isCartLoading || isCalculating || isSubmitting;
   const hasCheckoutItems = displayItems.length > 0;
+  const paysAtBranch = paymentMethod === "sucursal";
+  const selectedBranch = branches.find(
+    (branch) => String(branch.id) === String(selectedBranchId),
+  );
+  const paymentOptionUnavailable =
+    paysAtBranch && (branchesLoading || !selectedBranchId || Boolean(branchesError));
   const companyPhone = String(empresa?.telefono || "88888888").trim();
   const companyPhoneHref = companyPhone.replace(/[^\d+]/g, "");
 
@@ -113,6 +167,10 @@ function CheckoutPage({
     setIsSubmitting(true);
 
     try {
+      if (paysAtBranch && !selectedBranchId) {
+        throw new Error("Selecciona la sucursal donde realizaras el pago.");
+      }
+
       let order = pendingOrder;
 
       if (!order) {
@@ -137,11 +195,33 @@ function CheckoutPage({
         await onOrderCreated(order);
       }
 
-      const payment = await iniciarPago(order.id);
-      savePaymentContext(payment.referencia, {
-        pedidoId: order.id,
-        pedidoNumero: order.numero,
-      });
+      let payment;
+      if (paysAtBranch) {
+        const branchPayment = await iniciarPagoEnSucursal(order.id, selectedBranchId);
+        payment = branchPayment.pago;
+        if (!payment?.referencia) {
+          throw new Error("El backend no devolvio la referencia del pago.");
+        }
+        savePaymentContext(payment.referencia, {
+          metodoPago: "sucursal",
+          pedidoId: branchPayment.pedido?.id || order.id,
+          pedidoNumero: branchPayment.pedido?.numero || order.numero,
+          prefactura: branchPayment.prefactura,
+          sucursalId: Number(selectedBranchId),
+          sucursalNombre: selectedBranch?.nombre || "Sucursal seleccionada",
+        });
+      } else {
+        payment = await iniciarPago(order.id);
+        if (!payment?.referencia) {
+          throw new Error("El backend no devolvio la referencia del pago.");
+        }
+        savePaymentContext(payment.referencia, {
+          metodoPago: "en_linea",
+          pedidoId: order.id,
+          pedidoNumero: order.numero,
+        });
+      }
+
       clearPendingOrder(checkoutScope);
       onPaymentStarted(payment);
     } catch (error) {
@@ -350,6 +430,73 @@ function CheckoutPage({
               </section>
             )}
           </fieldset>
+
+          <section className={styles.formSection} aria-labelledby="payment-method-title">
+            <div className={styles.formHeading}>
+              <span aria-hidden="true">
+                <WalletCards size={22} />
+              </span>
+              <div>
+                <h2 id="payment-method-title">Forma de pago</h2>
+                <p>Elige como deseas completar este pedido</p>
+              </div>
+            </div>
+
+            <div className={styles.paymentMethodSwitch}>
+              <label className={paymentMethod === "en_linea" ? styles.selectedMode : ""}>
+                <input
+                  checked={paymentMethod === "en_linea"}
+                  name="metodo_pago"
+                  onChange={(event) => setPaymentMethod(event.target.value)}
+                  type="radio"
+                  value="en_linea"
+                />
+                <CreditCard size={18} aria-hidden="true" />
+                Pagar en linea
+              </label>
+              <label className={paysAtBranch ? styles.selectedMode : ""}>
+                <input
+                  checked={paysAtBranch}
+                  name="metodo_pago"
+                  onChange={(event) => setPaymentMethod(event.target.value)}
+                  type="radio"
+                  value="sucursal"
+                />
+                <Building2 size={18} aria-hidden="true" />
+                Pagar en sucursal
+              </label>
+            </div>
+
+            {paysAtBranch ? (
+              <div className={styles.branchPaymentFields}>
+                <label htmlFor="checkout-branch">
+                  Sucursal para realizar el pago
+                  <select
+                    disabled={branchesLoading || Boolean(branchesError)}
+                    id="checkout-branch"
+                    onChange={(event) => setSelectedBranchId(event.target.value)}
+                    required
+                    value={selectedBranchId}
+                  >
+                    <option value="">
+                      {branchesLoading ? "Cargando sucursales..." : "Selecciona una sucursal"}
+                    </option>
+                    {branches.map((branch) => (
+                      <option key={branch.id} value={branch.id}>{branch.nombre}</option>
+                    ))}
+                  </select>
+                </label>
+                {branchesError ? <p role="alert">{branchesError}</p> : null}
+                {selectedBranch?.direccion ? (
+                  <span><MapPin size={16} aria-hidden="true" />{selectedBranch.direccion}</span>
+                ) : null}
+                <span>
+                  <Mail size={16} aria-hidden="true" />
+                  La prefactura sera enviada al correo verificado de tu cuenta.
+                </span>
+              </div>
+            ) : null}
+          </section>
         </div>
 
         <aside className={styles.orderSummary} aria-label="Resumen del pedido">
@@ -412,15 +559,26 @@ function CheckoutPage({
 
           <button
             className={styles.payButton}
+            data-loading={isBusy}
             type="submit"
-            disabled={!hasCheckoutItems || isBusy}
+            disabled={!hasCheckoutItems || isBusy || paymentOptionUnavailable}
           >
-            <WalletCards size={20} aria-hidden="true" />
+            {paysAtBranch ? (
+              <Building2 size={20} aria-hidden="true" />
+            ) : (
+              <WalletCards size={20} aria-hidden="true" />
+            )}
             {isSubmitting
-              ? "Preparando pago"
+              ? paysAtBranch
+                ? "Generando prefactura"
+                : "Preparando pago"
               : pendingOrder
-                ? "Reintentar pago"
-                : "Pagar e iniciar pago"}
+                ? paysAtBranch
+                  ? "Solicitar prefactura"
+                  : "Reintentar pago"
+                : paysAtBranch
+                  ? "Generar prefactura"
+                  : "Pagar en linea"}
           </button>
           <p className={styles.secureNote}>
             <ShieldCheck size={15} aria-hidden="true" />
