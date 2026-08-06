@@ -140,6 +140,40 @@
   font-weight: 700;
 }
 
+.cartButtonAttention {
+  animation: cartButtonBump 620ms ease-out;
+}
+
+.cartButtonAttention .cartBadge {
+  animation: cartBadgePulse 620ms ease-out;
+}
+
+@keyframes cartButtonBump {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  38% {
+    transform: scale(1.18) rotate(-7deg);
+  }
+
+  68% {
+    transform: scale(1.06) rotate(3deg);
+  }
+}
+
+@keyframes cartBadgePulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(209, 57, 61, 0);
+  }
+
+  45% {
+    box-shadow: 0 0 0 7px rgba(209, 57, 61, 0.2);
+  }
+}
+
 @media (max-width: 1080px) {
   .header {
     grid-template-columns: 1fr;
@@ -239,5 +273,12 @@
     min-width: 19px;
     height: 19px;
     font-size: 11px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cartButtonAttention,
+  .cartButtonAttention .cartBadge {
+    animation: none;
   }
 }

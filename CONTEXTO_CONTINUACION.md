@@ -394,6 +394,10 @@ de construir las pantallas.
 - Persiste en `localStorage` bajo `ventas_cart_v1:<slug_empresa>`.
 - Conserva cantidad, codigo, tipo, precio mostrado e inventario conocido.
 - Se mantiene al recargar.
+- Agregar un articulo actualiza el contador sin abrir automaticamente el drawer;
+  el usuario lo abre desde el icono del encabezado.
+- Un agregado exitoso cambia temporalmente el boton a `Agregado`, anima el
+  contador y muestra una confirmacion con acceso a `Ver carrito`.
 
 ### Carrito autenticado
 
@@ -756,6 +760,10 @@ sola que cada flujo de negocio funcione contra datos reales.
   autenticado ni comercial.
 - El query string de empresa es util para desarrollo; produccion debe confiar
   principalmente en dominios autorizados y en aislamiento de backend.
+- Las operaciones autenticadas del carrito tienen un limite de espera de 30
+  segundos y los errores HTML de Django no se muestran como texto al usuario.
+- El backend debe conservar `DATABASE_CONN_MAX_AGE=0` al usar el Session pooler
+  de Supabase para no agotar su limite de conexiones.
 
 ## 21. Decisiones que deben conservarse
 

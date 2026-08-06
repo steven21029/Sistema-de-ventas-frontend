@@ -70,6 +70,103 @@
   color: var(--color-muted);
 }
 
+.cartFeedback {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 80;
+  width: min(440px, calc(100vw - 32px));
+  min-height: 78px;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto 36px;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(45, 75, 119, 0.18);
+  border-left: 5px solid #2f7d5c;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  box-shadow: 0 18px 42px rgba(36, 63, 103, 0.2);
+  animation: cartFeedbackIn 220ms ease-out;
+}
+
+.cartFeedbackIcon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #236447;
+  background: #e7f5ed;
+}
+
+.cartFeedbackCopy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.cartFeedbackCopy strong,
+.cartFeedbackCopy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cartFeedbackCopy strong {
+  color: var(--color-blue);
+  font-size: 15px;
+}
+
+.cartFeedbackCopy small {
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.cartFeedbackViewButton {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: white;
+  background: var(--color-red-dark);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.cartFeedbackCloseButton {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: var(--color-muted);
+  background: transparent;
+}
+
+.cartFeedbackCloseButton:hover {
+  color: var(--color-blue);
+  background: var(--color-surface-soft);
+}
+
+@keyframes cartFeedbackIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (max-width: 1080px) {
   .appShell {
     padding-inline: 24px;
@@ -92,5 +189,30 @@
     margin-top: 14px;
     padding: 13px 14px;
     font-size: 14px;
+  }
+
+  .cartFeedback {
+    right: 16px;
+    bottom: 16px;
+    grid-template-columns: 40px minmax(0, 1fr) 36px;
+    gap: 9px;
+    padding: 12px;
+  }
+
+  .cartFeedbackViewButton {
+    grid-column: 2 / 4;
+    grid-row: 2;
+    width: 100%;
+  }
+
+  .cartFeedbackCloseButton {
+    grid-column: 3;
+    grid-row: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cartFeedback {
+    animation: none;
   }
 }

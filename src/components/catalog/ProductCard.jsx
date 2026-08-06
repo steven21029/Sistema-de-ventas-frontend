@@ -16,6 +16,9 @@ function ProductCard({
 }) {
   const imageUrl = resolveMediaUrl(product.imagen_final);
   const [hasImageError, setHasImageError] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
+  const [addConfirmationId, setAddConfirmationId] = useState(0);
+  const isAddConfirmed = addConfirmationId > 0;
   const controlsInventory = product.controla_inventario === true;
   const hasStockInfo =
     controlsInventory &&
@@ -36,7 +39,13 @@ function ProductCard({
       : "Disponible"
     : itemTypeLabel;
   const availabilityLabel = isOutOfStock ? "Agotado" : "Disponible";
-  const buttonLabel = isOutOfStock ? "Agotado" : "Agregar";
+  const buttonLabel = isOutOfStock
+    ? "Agotado"
+    : isAdding
+      ? "Agregando"
+      : isAddConfirmed
+        ? "Agregado"
+        : "Agregar";
   const totalSold = Number(product.total_vendido) || 0;
   const isCompactVariant = variant === "compact" || variant === "mini";
   const isHomeVariant = variant === "home";
@@ -50,6 +59,36 @@ function ProductCard({
   useEffect(() => {
     setHasImageError(false);
   }, [imageUrl]);
+
+  useEffect(() => {
+    if (!addConfirmationId) {
+      return undefined;
+    }
+
+    const confirmationTimer = window.setTimeout(() => {
+      setAddConfirmationId(0);
+    }, 1600);
+
+    return () => window.clearTimeout(confirmationTimer);
+  }, [addConfirmationId]);
+
+  async function handleAddToCart() {
+    if (isAdding || isOutOfStock) {
+      return;
+    }
+
+    setIsAdding(true);
+
+    try {
+      const wasAdded = await onAddToCart(product);
+
+      if (wasAdded) {
+        setAddConfirmationId((current) => current + 1);
+      }
+    } finally {
+      setIsAdding(false);
+    }
+  }
 
   return (
     <article className={cardClassName}>
@@ -148,12 +187,21 @@ function ProductCard({
             <strong>{price > 0 ? formatMoney(price) : "Por definir"}</strong>
           </span>
           <button
+            className={isAddConfirmed ? styles.addedButton : ""}
             type="button"
-            onClick={() => onAddToCart(product)}
-            disabled={isOutOfStock}
-            aria-label={`Agregar ${product.nombre} al carrito`}
+            onClick={handleAddToCart}
+            disabled={isOutOfStock || isAdding}
+            aria-label={
+              isAddConfirmed
+                ? `${product.nombre} agregado al carrito`
+                : `Agregar ${product.nombre} al carrito`
+            }
           >
-            <ShoppingCart size={20} aria-hidden="true" />
+            {isAddConfirmed ? (
+              <CheckCircle2 size={20} aria-hidden="true" />
+            ) : (
+              <ShoppingCart size={20} aria-hidden="true" />
+            )}
             <span>{buttonLabel}</span>
           </button>
         </div>

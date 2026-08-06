@@ -1269,3 +1269,63 @@ Archivos modificados:
 Verificacion:
 
 - `npm run build`: correcto.
+
+## 2026-08-06 - Carrito sin apertura automatica al agregar
+
+Estado: implementado en frontend.
+
+Cambios:
+
+- Agregar productos, examenes, perfiles o combos actualiza los articulos y el
+  contador sin abrir el drawer del carrito.
+- Tras un agregado exitoso, el boton confirma `Agregado`, el contador se anima
+  y aparece una notificacion temporal con el nombre del articulo.
+- La notificacion permite abrir el carrito directamente o cerrarse, y desaparece
+  automaticamente despues de unos segundos.
+- El drawer se abre cuando el usuario pulsa el icono del carrito o cuando vuelve
+  explicitamente desde checkout.
+
+Archivos modificados:
+
+- `src/app/App.jsx`.
+- `src/app/App.module.css`.
+- `src/components/catalog/ProductCard.jsx`.
+- `src/components/catalog/ProductCard.module.css`.
+- `src/components/catalog/PackageCard.jsx`.
+- `src/components/catalog/PackageCard.module.css`.
+- `src/components/layout/Header.jsx`.
+- `src/components/layout/Header.module.css`.
+
+Verificacion:
+
+- `npm run build`: correcto.
+
+## 2026-08-06 - Recuperacion del carrito ante fallos de conexion
+
+Motivo:
+
+- Supabase rechazo temporalmente el agregado de articulos con
+  `EMAXCONNSESSION` al alcanzar el limite de 15 clientes del Session pooler.
+- Mientras la peticion permanecia pendiente, la tarjeta continuaba mostrando
+  `Agregando` y una respuesta HTML de Django podia ocupar el area de error.
+
+Cambios:
+
+- Las operaciones autenticadas del carrito tienen un tiempo maximo de 30
+  segundos.
+- Al agotarse el tiempo, el boton recupera su estado y se muestra un mensaje
+  breve para volver a intentar.
+- Las paginas HTML de depuracion y mensajes excesivamente largos ya no se
+  muestran directamente en la interfaz.
+- El backend libera cada conexion de Supabase al terminar la solicitud mediante
+  `DATABASE_CONN_MAX_AGE=0`.
+
+Archivos modificados en frontend:
+
+- `src/services/apiClient.js`.
+- `src/services/cartService.js`.
+- `src/utils/apiError.js`.
+
+Verificacion:
+
+- `npm run build`: correcto.

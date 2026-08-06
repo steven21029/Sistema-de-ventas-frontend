@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { CheckCircle2, ShoppingCart, X } from "lucide-react";
 import AuthDialog from "../components/auth/AuthDialog";
 import CartDrawer from "../components/cart/CartDrawer";
 import FavoritesDrawer from "../components/favorites/FavoritesDrawer";
@@ -290,6 +291,8 @@ function App() {
   const [isCartLoading, setIsCartLoading] = useState(false);
   const [isCartPersisting, setIsCartPersisting] = useState(false);
   const [cartPersistenceError, setCartPersistenceError] = useState("");
+  const [cartFeedback, setCartFeedback] = useState(null);
+  const cartFeedbackSequenceRef = useRef(0);
   const serverCartRequestRef = useRef(null);
   const [cartCalculation, setCartCalculation] = useState(null);
   const [cartCalculationError, setCartCalculationError] = useState("");
@@ -344,6 +347,19 @@ function App() {
       ),
     [favoriteBusyKeys, favorites],
   );
+
+  useEffect(() => {
+    if (!cartFeedback) {
+      return undefined;
+    }
+
+    const feedbackId = cartFeedback.id;
+    const feedbackTimer = window.setTimeout(() => {
+      setCartFeedback((current) => (current?.id === feedbackId ? null : current));
+    }, 3200);
+
+    return () => window.clearTimeout(feedbackTimer);
+  }, [cartFeedback]);
 
   useEffect(() => {
     function syncCurrentPath() {
@@ -806,6 +822,19 @@ function App() {
     setMenuSearchText(searchConfig.enabled ? searchText.trim() : "");
   }
 
+  function showCartFeedback(productName) {
+    cartFeedbackSequenceRef.current += 1;
+    setCartFeedback({
+      id: cartFeedbackSequenceRef.current,
+      productName: String(productName || "Articulo").trim() || "Articulo",
+    });
+  }
+
+  function handleOpenCart() {
+    setCartFeedback(null);
+    setCartOpen(true);
+  }
+
   async function handleAddToCart(product, options = {}) {
     const productCode = getSellableCode(product);
     const productPrice = getSellablePrice(product);
@@ -814,21 +843,19 @@ function App() {
     const cartKey = getCartKey(productCode, tipoArticulo, itemKind);
 
     if (!productCode) {
-      return;
+      return false;
     }
-
-    setCartOpen(true);
 
     if (authSession) {
       if (isCartPersisting) {
-        return;
+        return false;
       }
 
       if (!tipoArticulo) {
         setCartPersistenceError(
           "No se pudo identificar si el articulo es producto, perfil o combo.",
         );
-        return;
+        return false;
       }
 
       setIsCartPersisting(true);
@@ -843,6 +870,8 @@ function App() {
           1,
         );
         applyServerCart(payload);
+        showCartFeedback(product.nombre);
+        return true;
       } catch (requestError) {
         setCartPersistenceError(
           getApiErrorMessage(
@@ -850,11 +879,10 @@ function App() {
             "No se pudo guardar el articulo en el carrito de tu cuenta.",
           ),
         );
+        return false;
       } finally {
         setIsCartPersisting(false);
       }
-
-      return;
     }
 
     setCartItems((current) => {
@@ -893,6 +921,9 @@ function App() {
         },
       ];
     });
+
+    showCartFeedback(product.nombre);
+    return true;
   }
 
   async function handleIncrease(cartKey) {
@@ -1410,7 +1441,7 @@ function App() {
           favoriteCount={favorites.length}
           onAccountClick={() => setAuthOpen(true)}
           onBrandClick={handleBrandNavigation}
-          onCartClick={() => setCartOpen(true)}
+          onCartClick={handleOpenCart}
           onFavoritesClick={handleFavoritesClick}
           onSearchChange={setSearchText}
           onSearchSubmit={handleSearchSubmit}
@@ -1418,6 +1449,7 @@ function App() {
           searchPlaceholder={searchConfig.placeholder}
           searchValue={searchText}
           shoppingActionsHidden={isPurchaseFlow}
+          cartAttentionKey={cartFeedback?.id || 0}
         />
         {!isPurchaseFlow && (
           <MainNav
@@ -1437,6 +1469,40 @@ function App() {
 
         {renderCurrentPage()}
       </main>
+
+      {cartFeedback && (
+        <div
+          className={styles.cartFeedback}
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          <span className={styles.cartFeedbackIcon} aria-hidden="true">
+            <CheckCircle2 size={23} />
+          </span>
+          <span className={styles.cartFeedbackCopy}>
+            <strong>Agregado al carrito</strong>
+            <small>{cartFeedback.productName}</small>
+          </span>
+          <button
+            className={styles.cartFeedbackViewButton}
+            type="button"
+            onClick={handleOpenCart}
+          >
+            <ShoppingCart size={18} aria-hidden="true" />
+            Ver carrito
+          </button>
+          <button
+            className={styles.cartFeedbackCloseButton}
+            type="button"
+            onClick={() => setCartFeedback(null)}
+            aria-label="Cerrar confirmacion"
+            title="Cerrar"
+          >
+            <X size={18} aria-hidden="true" />
+          </button>
+        </div>
+      )}
 
       <FavoritesDrawer
         error={favoritesError}

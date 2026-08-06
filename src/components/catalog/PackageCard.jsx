@@ -1,4 +1,4 @@
-import { Heart, ShoppingCart } from "lucide-react";
+import { CheckCircle2, Heart, ShoppingCart } from "lucide-react";
 import { useEffect, useState } from "react";
 import { resolveMediaUrl } from "../../services/apiClient";
 import { formatMoney, toNumber } from "../../utils/money";
@@ -19,6 +19,9 @@ function PackageCard({
 }) {
   const imageUrl = resolveMediaUrl(item.imagen_final);
   const [hasImageError, setHasImageError] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
+  const [addConfirmationId, setAddConfirmationId] = useState(0);
+  const isAddConfirmed = addConfirmationId > 0;
   const finalPrice = getPackagePrice(item);
   const normalPrice = toNumber(item.precio_normal);
   const products = Array.isArray(item.productos) ? item.productos : [];
@@ -29,6 +32,40 @@ function PackageCard({
   useEffect(() => {
     setHasImageError(false);
   }, [imageUrl]);
+
+  useEffect(() => {
+    if (!addConfirmationId) {
+      return undefined;
+    }
+
+    const confirmationTimer = window.setTimeout(() => {
+      setAddConfirmationId(0);
+    }, 1600);
+
+    return () => window.clearTimeout(confirmationTimer);
+  }, [addConfirmationId]);
+
+  async function handleAddToCart() {
+    if (isAdding || finalPrice <= 0) {
+      return;
+    }
+
+    setIsAdding(true);
+
+    try {
+      const wasAdded = await onAddToCart(item, {
+        itemKind: "package",
+        label,
+        tipoArticulo: favoriteType,
+      });
+
+      if (wasAdded) {
+        setAddConfirmationId((current) => current + 1);
+      }
+    } finally {
+      setIsAdding(false);
+    }
+  }
 
   return (
     <article className={styles.card}>
@@ -85,18 +122,17 @@ function PackageCard({
             <strong>{finalPrice > 0 ? formatMoney(finalPrice) : "Por definir"}</strong>
           </div>
           <button
+            className={isAddConfirmed ? styles.addedButton : ""}
             type="button"
-            onClick={() =>
-              onAddToCart(item, {
-                itemKind: "package",
-                label,
-                tipoArticulo: favoriteType,
-              })
-            }
-            disabled={finalPrice <= 0}
+            onClick={handleAddToCart}
+            disabled={finalPrice <= 0 || isAdding}
           >
-            <ShoppingCart size={19} aria-hidden="true" />
-            Agregar
+            {isAddConfirmed ? (
+              <CheckCircle2 size={19} aria-hidden="true" />
+            ) : (
+              <ShoppingCart size={19} aria-hidden="true" />
+            )}
+            {isAdding ? "Agregando" : isAddConfirmed ? "Agregado" : "Agregar"}
           </button>
         </div>
       </div>

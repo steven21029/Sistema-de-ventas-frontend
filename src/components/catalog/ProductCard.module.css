@@ -438,6 +438,10 @@
   background: #a8adb7;
 }
 
+.footer button.addedButton {
+  background: #2f7d5c;
+}
+
 @media (max-width: 760px) {
   .card {
     grid-template-columns: 1fr;

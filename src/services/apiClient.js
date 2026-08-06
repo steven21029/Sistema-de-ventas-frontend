@@ -53,6 +53,42 @@ async function readResponse(response) {
   return responseText;
 }
 
+function createRequestSignal(options) {
+  const timeoutMs = Number(options.timeoutMs);
+
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    return {
+      signal: options.signal,
+      didTimeout: () => false,
+      cleanup: () => {},
+    };
+  }
+
+  const controller = new AbortController();
+  let timedOut = false;
+  const abortFromCaller = () => controller.abort(options.signal?.reason);
+
+  if (options.signal?.aborted) {
+    abortFromCaller();
+  } else {
+    options.signal?.addEventListener("abort", abortFromCaller, { once: true });
+  }
+
+  const timeoutId = globalThis.setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
+
+  return {
+    signal: controller.signal,
+    didTimeout: () => timedOut,
+    cleanup: () => {
+      globalThis.clearTimeout(timeoutId);
+      options.signal?.removeEventListener("abort", abortFromCaller);
+    },
+  };
+}
+
 async function performRequest(path, options = {}) {
   const isFormData =
     typeof FormData !== "undefined" && options.body instanceof FormData;
@@ -68,21 +104,38 @@ async function performRequest(path, options = {}) {
     headers.Authorization = `Bearer ${accessToken}`;
   }
 
-  const response = await fetch(buildUrl(path, options.params), {
-    method: options.method || "GET",
-    cache: "no-store",
-    credentials: options.credentials || (options.auth ? "include" : "same-origin"),
-    headers,
-    body:
-      options.body !== undefined
-        ? isFormData
-          ? options.body
-          : JSON.stringify(options.body)
-        : undefined,
-  });
-  const payload = await readResponse(response);
+  const requestSignal = createRequestSignal(options);
 
-  return { payload, response };
+  try {
+    const response = await fetch(buildUrl(path, options.params), {
+      method: options.method || "GET",
+      cache: "no-store",
+      credentials: options.credentials || (options.auth ? "include" : "same-origin"),
+      headers,
+      body:
+        options.body !== undefined
+          ? isFormData
+            ? options.body
+            : JSON.stringify(options.body)
+          : undefined,
+      signal: requestSignal.signal,
+    });
+    const payload = await readResponse(response);
+
+    return { payload, response };
+  } catch (error) {
+    if (requestSignal.didTimeout()) {
+      throw new ApiError(
+        "La solicitud tardo demasiado. Intenta nuevamente en unos segundos.",
+        408,
+        null,
+      );
+    }
+
+    throw error;
+  } finally {
+    requestSignal.cleanup();
+  }
 }
 
 async function request(path, options = {}) {

@@ -5,6 +5,7 @@ import styles from "./Header.module.css";
 
 function Header({
   accountLabel = "Mi cuenta",
+  cartAttentionKey = 0,
   cartCount,
   empresa,
   favoriteCount = 0,
@@ -22,6 +23,7 @@ function Header({
   const logoUrl = resolveMediaUrl(empresa?.logo);
   const [logoShape, setLogoShape] = useState("wide");
   const [hasLogoError, setHasLogoError] = useState(false);
+  const [cartAttentionActive, setCartAttentionActive] = useState(false);
   const brandName = empresa?.nombre || "Tu logo aqui";
   const brandParts = brandName.trim().split(/\s+/);
   const primaryName = empresa?.nombre ? brandParts[0] : "Tu logo";
@@ -61,6 +63,25 @@ function Header({
       isActive = false;
     };
   }, [logoUrl]);
+
+  useEffect(() => {
+    if (!cartAttentionKey) {
+      return undefined;
+    }
+
+    setCartAttentionActive(false);
+    const animationFrame = window.requestAnimationFrame(() => {
+      setCartAttentionActive(true);
+    });
+    const attentionTimer = window.setTimeout(() => {
+      setCartAttentionActive(false);
+    }, 620);
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      window.clearTimeout(attentionTimer);
+    };
+  }, [cartAttentionKey]);
 
   function handleBrandClick(event) {
     event.preventDefault();
@@ -132,9 +153,15 @@ function Header({
                 </span>
               )}
             </button>
-            <button className={styles.cartButton} type="button" onClick={onCartClick}>
+            <button
+              className={`${styles.cartButton} ${
+                cartAttentionActive ? styles.cartButtonAttention : ""
+              }`}
+              type="button"
+              onClick={onCartClick}
+              aria-label={`Abrir carrito. ${cartCount} articulos`}
+            >
               <ShoppingCart size={25} aria-hidden="true" />
-              <span className="srOnly">Abrir carrito</span>
               <span className={styles.cartBadge}>{cartCount}</span>
             </button>
           </>

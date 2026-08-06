@@ -1,6 +1,16 @@
 function findErrorMessage(value) {
   if (typeof value === "string" && value.trim()) {
-    return value;
+    const message = value.trim().replace(/\s+/g, " ");
+    const looksLikeDebugPage =
+      /<(?:!doctype|html|head|body|style|script)\b/i.test(message) ||
+      /(?:OperationalError|Traceback) at \/api\//i.test(message) ||
+      /Request Method:\s*(?:GET|POST|PUT|PATCH|DELETE)/i.test(message);
+
+    if (looksLikeDebugPage || message.length > 500) {
+      return "";
+    }
+
+    return message;
   }
 
   if (Array.isArray(value)) {

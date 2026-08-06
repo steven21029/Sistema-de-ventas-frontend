@@ -1,5 +1,11 @@
 import { apiDelete, apiGet, apiPatch, apiPost } from "./apiClient";
 
+const CART_REQUEST_TIMEOUT_MS = 30000;
+const CART_REQUEST_OPTIONS = {
+  auth: true,
+  timeoutMs: CART_REQUEST_TIMEOUT_MS,
+};
+
 export function calcularCarritoPublico(empresaSlug, items) {
   return apiPost("/pedidos/carrito/calcular/", {
     empresa_slug: empresaSlug,
@@ -12,9 +18,7 @@ export function calcularCarritoPublico(empresaSlug, items) {
 }
 
 export function getMiCarrito() {
-  return apiGet("/pedidos/carritos/mi-carrito/", undefined, {
-    auth: true,
-  });
+  return apiGet("/pedidos/carritos/mi-carrito/", undefined, CART_REQUEST_OPTIONS);
 }
 
 export function agregarArticuloCarrito(carritoId, codigo, tipoArticulo, cantidad = 1) {
@@ -25,9 +29,7 @@ export function agregarArticuloCarrito(carritoId, codigo, tipoArticulo, cantidad
       tipo_articulo: tipoArticulo || undefined,
       cantidad,
     },
-    {
-      auth: true,
-    },
+    CART_REQUEST_OPTIONS,
   );
 }
 
@@ -37,14 +39,10 @@ export function actualizarCantidadCarrito(itemId, cantidad) {
     {
       cantidad,
     },
-    {
-      auth: true,
-    },
+    CART_REQUEST_OPTIONS,
   );
 }
 
 export function eliminarItemCarrito(itemId) {
-  return apiDelete(`/pedidos/items-carrito/${itemId}/`, {
-    auth: true,
-  });
+  return apiDelete(`/pedidos/items-carrito/${itemId}/`, CART_REQUEST_OPTIONS);
 }
