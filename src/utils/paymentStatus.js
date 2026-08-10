@@ -4,6 +4,13 @@ const PAYMENT_STATUS_LABELS = {
   pagado: "Pagado",
   pendiente: "Pendiente",
   rechazado: "Rechazado",
+  sin_pago: "Sin confirmar",
+};
+
+const PAYMENT_METHOD_LABELS = {
+  en_linea: "Pago en linea",
+  pendiente: "Sin metodo elegido",
+  sucursal: "Pago en sucursal",
 };
 
 function normalizeValue(value) {
@@ -20,27 +27,20 @@ function isBranchPayment(record) {
 }
 
 export function getAdminPaymentStatus(value, record = {}) {
-  const status = normalizeValue(value);
-  const paidAtBranch =
-    status === "sin_pago" ||
-    (isBranchPayment(record) && ["aprobado", "pagado"].includes(status));
-
-  if (paidAtBranch) {
-    return {
-      label: "Pagadas en sucursal",
-      tone: "pagado",
-    };
-  }
-
-  if (isBranchPayment(record) && status === "pendiente") {
-    return {
-      label: "Pendiente en sucursal",
-      tone: "pendiente",
-    };
-  }
+  const rawStatus = normalizeValue(value);
+  const status = rawStatus === "sin_pago" && isBranchPayment(record) ? "pagado" : rawStatus;
 
   return {
     label: PAYMENT_STATUS_LABELS[status] || String(value || "-"),
     tone: status || "pendiente",
+  };
+}
+
+export function getAdminPaymentMethod(value) {
+  const method = normalizeValue(value);
+
+  return {
+    label: PAYMENT_METHOD_LABELS[method] || String(value || "-"),
+    value: method,
   };
 }

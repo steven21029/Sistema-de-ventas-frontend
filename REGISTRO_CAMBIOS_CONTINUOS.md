@@ -1659,3 +1659,123 @@ Verificacion:
 - Casos comprobados: `sin_pago`, sucursal pagado, sucursal pendiente y pago en
   linea pagado.
 - `npm run build`: correcto; Vite transformo 1642 modulos.
+
+## 2026-08-10 - Recuperacion del carrito al recargar
+
+Estado: corregido y compilado en frontend.
+
+Problema:
+
+- El carrito autenticado dependia completamente de restaurar la sesion y
+  completar `GET /api/v1/pedidos/carritos/mi-carrito/` durante cada recarga.
+- Mientras se consultaba, o si la solicitud fallaba, los articulos desaparecian
+  de la interfaz porque no existia una copia local de recuperacion.
+
+Solucion:
+
+- Se agrego una copia local aislada por empresa y usuario con el prefijo
+  `ventas_account_cart_v1`.
+- La copia se carga al restaurar la cuenta y se actualiza despues de sincronizar
+  o modificar correctamente el carrito remoto.
+- El backend continua siendo la fuente oficial del carrito autenticado.
+- Si no se puede recuperar el carrito remoto, la copia permanece visible pero
+  sus controles y el checkout quedan bloqueados para evitar cambios locales
+  que no lleguen al servidor.
+- El carrito invitado conserva su clave y comportamiento anteriores.
+
+Archivos modificados:
+
+- `src/app/App.jsx`.
+- `src/components/cart/CartDrawer.jsx`.
+- `CONTEXTO_CONTINUACION.md`.
+- `REGISTRO_CAMBIOS_CONTINUOS.md`.
+
+Verificacion:
+
+- Chrome headless: el contador con dos articulos se mantuvo despues de una
+  recarga completa y un fallo `503` simulado de `mi-carrito`.
+- La copia recuperada mantuvo visible el producto, mostro el error de
+  sincronizacion y bloqueo sus controles.
+- `npm run build`: correcto; Vite transformo 1642 modulos.
+
+## 2026-08-10 - Pagos separados por metodo
+
+Estado: implementado y verificado en frontend con el contrato oficial.
+
+Integracion:
+
+- El dashboard consume `resumen.pagos_por_metodo.sucursal` y
+  `resumen.pagos_por_metodo.en_linea` desde
+  `GET /api/v1/reportes/resumen-ventas/`.
+- Se elimino la metrica principal `Pendiente de pago`.
+- Se agregaron indicadores independientes de monto y cantidad aprobada para
+  pagos en sucursal y pagos en linea.
+- Pedidos recientes muestra el metodo de pago en vez de mezclarlo con el estado.
+- Los listados y detalles administrativos de Pedidos y Pagos incluyen una
+  columna o campo `Metodo` con etiquetas legibles.
+- Los estados aprobado, pagado, pendiente, rechazado y cancelado conservan su
+  significado independiente del metodo.
+
+Archivos modificados:
+
+- `src/admin/AdminDashboard.jsx`.
+- `src/admin/AdminApp.module.css`.
+- `src/admin/AdminResourcePage.jsx`.
+- `src/admin/resourceConfigs.js`.
+- `src/utils/paymentStatus.js`.
+- `CONTEXTO_CONTINUACION.md`.
+- `REGISTRO_CAMBIOS_CONTINUOS.md`.
+
+Verificacion:
+
+- Contrato simulado con dos pagos aprobados por `L 2,000.00` en sucursal y tres
+  por `L 3,500.00` en linea.
+- Dashboard sin la tarjeta anterior y sin desbordamiento a 1440 y 320 px.
+- Listado de pagos con ambos metodos legibles y sin mostrar `en_linea`.
+- `npm run build`: correcto; Vite transformo 1642 modulos.
+
+## 2026-08-10 - Gestion de pedidos y cobros pendientes
+
+Estado: implementado y verificado en frontend con el contrato oficial.
+
+Integracion:
+
+- El dashboard consume `resumen.pendientes_por_metodo` y separa los pedidos por
+  cobrar en sucursal, esperando pago en linea y sin metodo elegido, mostrando
+  la cantidad y el monto decimal entregados por el backend.
+- El total pendiente generico de `estados` se omite cuando existe el nuevo
+  desglose para no duplicar pedidos.
+- Pedidos permite filtrar por estado y cancelar un registro pendiente con un
+  motivo obligatorio y confirmacion explicita.
+- La cancelacion usa
+  `POST /api/v1/pedidos/pedidos/{id}/cancelar-pendiente/`, conserva el mensaje
+  de idempotencia y actualiza los datos de auditoria mostrados en el detalle.
+- Pagos permite filtrar por estado y confirmar cobros pendientes en sucursal
+  mediante `POST /api/v1/pagos/{referencia}/confirmar-en-sucursal/`.
+- Desde un pedido pendiente de sucursal se puede abrir directamente su pago;
+  la busqueda y el filtro `pendiente` se trasladan en la ruta administrativa.
+- El detalle de Pagos carga el pedido relacionado y presenta sus articulos,
+  cantidades, precios unitarios y subtotales para facilitar la verificacion del
+  cobro.
+- Los botones se muestran solo en estados validos, quedan bloqueados durante la
+  solicitud y desaparecen despues de completar correctamente la accion.
+- Las respuestas `500` con paginas o trazas de depuracion de Django se
+  reemplazan por un mensaje seguro y breve en el panel administrativo.
+
+Archivos modificados:
+
+- `src/admin/AdminDashboard.jsx`.
+- `src/admin/AdminApp.module.css`.
+- `src/admin/AdminResourcePage.jsx`.
+- `src/admin/resourceConfigs.js`.
+- `src/services/adminService.js`.
+- `src/utils/paymentStatus.js`.
+- `CONTEXTO_CONTINUACION.md`.
+- `REGISTRO_CAMBIOS_CONTINUOS.md`.
+
+Verificacion:
+
+- `npm run build`: correcto; Vite transformo 1642 modulos.
+- Chrome headless: dashboard, cancelacion con motivo, auditoria, filtros y
+  confirmacion de cobro en sucursal comprobados con respuestas simuladas.
+- Vista administrativa comprobada a 320 px sin desbordamiento horizontal.

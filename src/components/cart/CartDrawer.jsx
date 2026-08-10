@@ -11,6 +11,7 @@ function CartDrawer({
   isOpen,
   isCalculating,
   isPersisting,
+  isUnavailable,
   items,
   onClose,
   onCheckout,
@@ -69,7 +70,7 @@ function CartDrawer({
                     <button
                       type="button"
                       onClick={() => onDecrease(item.cartKey)}
-                      disabled={isPersisting}
+                      disabled={isPersisting || isUnavailable}
                     >
                       <Minus size={16} aria-hidden="true" />
                     </button>
@@ -77,7 +78,7 @@ function CartDrawer({
                     <button
                       type="button"
                       onClick={() => onIncrease(item.cartKey)}
-                      disabled={isPersisting}
+                      disabled={isPersisting || isUnavailable}
                     >
                       <Plus size={16} aria-hidden="true" />
                     </button>
@@ -85,7 +86,7 @@ function CartDrawer({
                       className={styles.removeButton}
                       type="button"
                       onClick={() => onRemove(item.cartKey)}
-                      disabled={isPersisting}
+                      disabled={isPersisting || isUnavailable}
                       aria-label={`Eliminar ${item.nombre}`}
                     >
                       <Trash2 size={16} aria-hidden="true" />
@@ -151,6 +152,7 @@ function CartDrawer({
             items.length === 0 ||
             isLoading ||
             isPersisting ||
+            isUnavailable ||
             isCalculating ||
             Boolean(calculationError)
           }

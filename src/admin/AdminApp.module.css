@@ -487,6 +487,27 @@
   accent-color: var(--admin-brand);
 }
 
+.compactSelect {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--admin-muted);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.compactSelect select {
+  height: 36px;
+  min-width: 132px;
+  padding: 0 30px 0 9px;
+  background: #fff;
+  color: var(--admin-ink);
+  border: 1px solid var(--admin-line-strong);
+  border-radius: 4px;
+  font-size: 12px;
+}
+
 .resultCount {
   margin-left: auto;
   color: var(--admin-muted);
@@ -698,6 +719,11 @@
   border-color: #e8b5b9;
 }
 
+.rowActions .confirmIconButton:hover {
+  color: var(--admin-success);
+  border-color: #a7d8cf;
+}
+
 .inlineError,
 .successBanner {
   display: flex;
@@ -715,11 +741,13 @@
   border: 1px solid #f0c9cd;
 }
 
-.inlineError span {
+.inlineError span,
+.successBanner span {
   flex: 1;
 }
 
-.inlineError button {
+.inlineError button,
+.successBanner button {
   display: grid;
   place-items: center;
   padding: 0;
@@ -866,6 +894,18 @@
   flex: 1;
   flex-direction: column;
   overflow-y: auto;
+}
+
+.readOnlyDrawerBody {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.readOnlyDrawerBody .detailContent {
+  overflow: visible;
 }
 
 .formGrid {
@@ -1204,6 +1244,25 @@
   gap: 2px;
 }
 
+.relatedDetailState {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 20px 16px;
+  padding: 10px 12px;
+  background: #f3f7fa;
+  color: var(--admin-muted);
+  border: 1px solid var(--admin-line);
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.relatedDetailError {
+  background: #fff0f1;
+  color: #9f2831;
+  border-color: #f0c9cd;
+}
+
 .modalLayer {
   display: grid;
   place-items: center;
@@ -1219,7 +1278,8 @@
   box-shadow: 0 22px 60px rgba(12, 31, 48, 0.24);
 }
 
-.dangerMark {
+.dangerMark,
+.successMark {
   display: grid;
   width: 44px;
   height: 44px;
@@ -1227,6 +1287,11 @@
   background: #fff0f1;
   color: var(--admin-danger);
   border-radius: 50%;
+}
+
+.successMark {
+  background: #edf8f5;
+  color: var(--admin-success);
 }
 
 .confirmDialog h2 {
@@ -1239,6 +1304,44 @@
   color: var(--admin-muted);
   font-size: 13px;
   line-height: 1.55;
+}
+
+.actionReason {
+  display: grid;
+  gap: 6px;
+  margin-top: 17px;
+  color: #405a70;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.actionReason textarea {
+  width: 100%;
+  min-height: 92px;
+  padding: 10px;
+  resize: vertical;
+  background: #fff;
+  color: var(--admin-ink);
+  border: 1px solid var(--admin-line-strong);
+  border-radius: 4px;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.actionReason textarea:focus {
+  outline: 2px solid color-mix(in srgb, var(--admin-brand) 22%, transparent);
+  border-color: var(--admin-brand);
+}
+
+.confirmDialog .modalError {
+  margin-top: 11px;
+  padding: 8px 10px;
+  background: #fff0f1;
+  color: #9f2831;
+  border: 1px solid #f0c9cd;
+  border-radius: 4px;
+  font-size: 12px;
 }
 
 .confirmDialog > div:last-child {
@@ -1411,7 +1514,7 @@
 
 .metricStrip {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   margin-bottom: 24px;
   background: #fff;
   border: 1px solid var(--admin-line);
@@ -1443,9 +1546,14 @@
   border-radius: 5px;
 }
 
-.metricIconWarning {
-  background: #fff7e8;
-  color: var(--admin-warning);
+.metricIconBranch {
+  background: #edf8f1;
+  color: var(--admin-success);
+}
+
+.metricIconOnline {
+  background: #eef3fb;
+  color: var(--admin-brand);
 }
 
 .metricCopy {
@@ -1692,12 +1800,59 @@
   background: var(--admin-warning);
 }
 
+.status_branchPending {
+  background: #168477;
+}
+
+.status_onlinePending {
+  background: var(--admin-brand);
+}
+
+.status_noMethod {
+  background: #b86b06;
+}
+
 .status_rejected {
   background: var(--admin-danger);
 }
 
 .status_other {
   background: var(--admin-muted);
+}
+
+.pendingPanelFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 15px;
+  border-top: 1px solid var(--admin-line);
+  color: var(--admin-muted);
+  font-size: 11px;
+}
+
+.pendingPanelFooter span {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.pendingPanelActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.pendingPanelActions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  background: transparent;
+  color: var(--admin-brand);
+  border: 0;
+  font-size: 11px;
+  font-weight: 750;
 }
 
 .dashboardQuickLinks {
@@ -2393,12 +2548,16 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .metricItem:nth-child(2) {
+  .metricItem:nth-child(even) {
     border-right: 0;
   }
 
-  .metricItem:nth-child(-n + 2) {
+  .metricItem:nth-child(-n + 4) {
     border-bottom: 1px solid var(--admin-line);
+  }
+
+  .metricItem:last-child {
+    grid-column: 1 / -1;
   }
 
   .analyticsGrid {
@@ -2535,6 +2694,15 @@
     width: 100%;
   }
 
+  .compactSelect {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .compactSelect select {
+    min-width: min(180px, 55vw);
+  }
+
   .resultCount {
     margin-left: auto;
   }
@@ -2610,6 +2778,7 @@
   }
 
   .metricItem:last-child {
+    grid-column: auto;
     border-bottom: 0;
   }
 
@@ -2650,6 +2819,17 @@
     gap: 4px;
   }
 
+  .pendingPanelFooter {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .pendingPanelActions {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
   .accountingBreakdown {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -2681,6 +2861,19 @@
   .ruleToggles,
   .inventoryMetrics {
     grid-template-columns: 1fr;
+  }
+
+  .drawerFooter {
+    flex-wrap: wrap;
+  }
+
+  .confirmDialog > div:last-child {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .confirmDialog > div:last-child button {
+    width: 100%;
   }
 
   .formFieldFull,

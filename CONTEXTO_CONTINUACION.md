@@ -419,6 +419,12 @@ de construir las pantallas.
 - Se obtiene y modifica en el backend.
 - Admite producto, perfil y combo.
 - Se conserva entre sesiones.
+- Mantiene una copia local de recuperacion separada por empresa y usuario bajo
+  `ventas_account_cart_v1:<slug_empresa>:<usuario>`.
+- Durante una recarga muestra la copia local mientras consulta `mi-carrito` y
+  la reemplaza con la respuesta oficial cuando la sincronizacion termina.
+- Si la consulta falla, conserva los articulos visibles, informa el error y
+  bloquea cambios o checkout hasta recuperar el carrito remoto.
 - Al iniciar sesion, `App.jsx` intenta pasar uno por uno los articulos locales
   al carrito del usuario.
 
@@ -517,10 +523,17 @@ Entrada principal: `src/admin/AdminApp.jsx`.
 
 ### 13.2 Dashboard
 
-- Ingresos del mes, ventas confirmadas, ticket promedio y monto pendiente.
+- Ingresos del mes, ventas confirmadas y ticket promedio.
+- Montos y cantidades aprobadas separados entre pagos en sucursal y pagos en
+  linea mediante `resumen.pagos_por_metodo`.
 - Comparacion porcentual contra el mes anterior.
 - Grafica de ingresos confirmados de los ultimos seis meses.
-- Distribucion del mes actual entre pedidos confirmados, pendientes y rechazados.
+- Distribucion del mes actual entre pedidos confirmados, rechazados y pendientes
+  separados en `sucursal`, `en_linea` y `sin_metodo` mediante
+  `resumen.pendientes_por_metodo`; cada grupo muestra la cantidad y el monto
+  decimal recibido del backend sin recalcularlo.
+- El bloque de pendientes enlaza directamente al listado de pedidos para su
+  gestion.
 - Desglose de subtotal, descuentos, impuestos y envios.
 - Productos mas vendidos del periodo.
 - Los indicadores oficiales se consumen desde
@@ -561,8 +574,8 @@ Entrada principal: `src/admin/AdminApp.jsx`.
 | Descuentos | CRUD de reglas porcentuales, alcance, productos y vigencia |
 | Usuarios | Crear/editar segun rol, bloquear/desbloquear y asignar permisos; no eliminar |
 | Mensajes | Consultar detalle y cambiar estado; contenido historico no editable |
-| Pedidos | Listado y detalle de solo lectura |
-| Pagos | Listado y detalle de solo lectura |
+| Pedidos | Listado, detalle, filtro por estado y cancelacion controlada si continua pendiente |
+| Pagos | Listado, detalle, filtro por estado y confirmacion de cobro pendiente en sucursal |
 | Inventario | Resumen, busqueda y ajuste de existencia con motivo/referencia |
 | Configuracion | Datos, contacto, redes, logo, imagen de sucursal, colores, impuesto, envios e imagenes de producto |
 | Sobre nosotros | Editor de contenido institucional e imagen |
@@ -577,17 +590,30 @@ Comportamiento comun del panel:
 - Confirmacion de eliminacion.
 - Un `409 Conflict` se presenta como registro protegido por historial.
 - Roles disponibles en el formulario de usuario se reducen segun el actor.
-- En pedidos y pagos, `sin_pago` se presenta como `Pagadas en sucursal`; los
-  registros con metodo sucursal que siguen pendientes muestran
-  `Pendiente en sucursal`.
+- Pedidos y pagos muestran el metodo en una columna independiente con las
+  etiquetas `Pago en sucursal` y `Pago en linea`.
+- El estado conserva su significado real y ya no se usa para identificar el
+  metodo de pago.
+- Cancelar un pedido exige motivo, confirmacion explicita y usa
+  `POST /api/v1/pedidos/pedidos/{id}/cancelar-pendiente/`; al terminar se
+  actualizan el listado, el detalle y los campos de auditoria.
+- Confirmar un cobro solo aparece para pagos `pendiente` con metodo `sucursal`
+  y usa `POST /api/v1/pagos/{referencia}/confirmar-en-sucursal/`.
+- Los pedidos pendientes con metodo `sucursal` ofrecen un acceso directo a
+  Pagos, filtrado por numero de pedido y estado pendiente, para completar esa
+  confirmacion sin confundirla con la cancelacion.
+- El detalle administrativo de un pago consulta su pedido relacionado y muestra
+  los articulos facturados con codigo, cantidad, precio unitario y subtotal.
+- Las acciones quedan bloqueadas durante la solicitud y respetan respuestas
+  idempotentes mediante el campo `duplicado` del backend.
 
 ### 13.4 Pendientes del panel
 
 - Probar cada modulo con superusuario, administrador maestro, administrador de
   empresa y gerente.
 - Probar aislamiento cambiando slugs/IDs manualmente.
-- Exponer filtros avanzados ya disponibles en APIs de pedidos, pagos, usuarios,
-  fechas y estados; hoy la interfaz generica usa principalmente busqueda.
+- Ampliar filtros avanzados de usuarios y fechas; Pedidos y Pagos ya permiten
+  filtrar por estado desde la interfaz.
 - Probar resumen y exportaciones con datos reales, periodos grandes, todos los
   formatos y cada rol administrativo autorizado.
 - Ampliar reportes a inventario o usuarios si entran en el alcance; la primera
@@ -595,8 +621,9 @@ Comportamiento comun del panel:
 - Definir devoluciones y cierres contables si deben formar parte de reportes
   posteriores.
 - Incorporar historial detallado de movimientos de inventario.
-- Definir flujo operativo para cambiar estados de pedido; actualmente pedidos
-  y pagos son deliberadamente de solo lectura.
+- Definir devoluciones o cambios posteriores al pago. La version actual solo
+  permite cancelar pedidos pendientes y confirmar cobros pendientes en
+  sucursal mediante acciones especificas del backend.
 - Agregar notificaciones o indicadores de actividad en tiempo real.
 - Pruebas automatizadas de CRUD, uploads, paginacion y permisos.
 - Repetir la revision visual del panel con datos reales y tablas extensas; la
@@ -823,7 +850,8 @@ sola que cada flujo de negocio funcione contra datos reales.
 - El query string de empresa es util para desarrollo; produccion debe confiar
   principalmente en dominios autorizados y en aislamiento de backend.
 - Las operaciones autenticadas del carrito tienen un limite de espera de 30
-  segundos y los errores HTML de Django no se muestran como texto al usuario.
+  segundos. Las trazas tecnicas HTML o de texto de Django se ocultan tanto en
+  la tienda como en el panel administrativo.
 - El backend debe conservar `DATABASE_CONN_MAX_AGE=0` al usar el Session pooler
   de Supabase para no agotar su limite de conexiones.
 

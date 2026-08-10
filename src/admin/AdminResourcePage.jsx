@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import {
+  BadgeCheck,
+  Ban,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -14,15 +16,22 @@ import {
   X,
 } from "lucide-react";
 import {
+  cancelPendingOrder,
+  confirmBranchPayment,
   createAdminResource,
   deleteAdminResource,
+  getAdminResourceDetail,
   listAdminResource,
   listAllAdminResource,
   runAdminAction,
   updateAdminResource,
 } from "../services/adminService";
 import { resolveMediaUrl } from "../services/apiClient";
-import { getAdminPaymentStatus } from "../utils/paymentStatus";
+import {
+  getAdminPaymentMethod,
+  getAdminPaymentStatus,
+} from "../utils/paymentStatus";
+import { getApiErrorMessage } from "../utils/apiError";
 import styles from "./AdminApp.module.css";
 
 const currencyFormatter = new Intl.NumberFormat("es-HN", {
@@ -37,21 +46,7 @@ const dateFormatter = new Intl.DateTimeFormat("es-HN", {
 });
 
 function getErrorMessage(error, fallback) {
-  const payload = error?.payload;
-  if (typeof payload === "string") return payload;
-  if (payload?.detail) return payload.detail;
-  if (payload?.detalle) return payload.detalle;
-
-  if (payload && typeof payload === "object") {
-    const firstEntry = Object.entries(payload)[0];
-    if (firstEntry) {
-      const [field, value] = firstEntry;
-      const message = Array.isArray(value) ? value.join(" ") : String(value);
-      return `${field}: ${message}`;
-    }
-  }
-
-  return error?.message || fallback;
+  return getApiErrorMessage(error, fallback);
 }
 
 function getFieldErrors(error) {
@@ -89,6 +84,29 @@ function displayName(item) {
     item?.numero ||
     item?.referencia ||
     "Registro"
+  );
+}
+
+function normalizeValue(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function canCancelPendingOrder(config, item) {
+  return config.key === "pedidos" && normalizeValue(item?.estado_pago) === "pendiente";
+}
+
+function canConfirmBranchPayment(config, item) {
+  return (
+    config.key === "pagos" &&
+    normalizeValue(item?.estado) === "pendiente" &&
+    getAdminPaymentMethod(item?.metodo).value === "sucursal"
+  );
+}
+
+function canManageBranchOrderPayment(config, item) {
+  return (
+    canCancelPendingOrder(config, item) &&
+    getAdminPaymentMethod(item?.metodo_pago).value === "sucursal"
   );
 }
 
@@ -143,6 +161,10 @@ function CellValue({ column, item }) {
 
   if (column.type === "verified") {
     return <span className={value ? styles.verified : styles.unverified}>{value ? "Verificado" : "Pendiente"}</span>;
+  }
+
+  if (column.type === "paymentMethod") {
+    return getAdminPaymentMethod(value).label;
   }
 
   if (column.type === "currency") return currencyFormatter.format(Number(value) || 0);
@@ -407,17 +429,32 @@ function FormField({ context, draft, error, field, onChange, optionData }) {
 
 function DetailContent({ config, item }) {
   const fields = config.detailFields || [];
+
+  function getDetailValue(key) {
+    if (key === "metodo" || key === "metodo_pago") {
+      return getAdminPaymentMethod(item?.[key]).label;
+    }
+
+    if (key === "estado" || key === "estado_pago") {
+      return getAdminPaymentStatus(item?.[key], item).label;
+    }
+
+    return key.includes("fecha")
+      ? formatDate(item?.[key])
+      : String(item?.[key] ?? "-");
+  }
+
   return (
     <div className={styles.detailContent}>
       {fields.map((key) => (
-        <div key={key} className={key === "mensaje" || key === "observaciones" ? styles.detailWide : ""}>
+        <div key={key} className={["mensaje", "observaciones", "motivo_cancelacion"].includes(key) ? styles.detailWide : ""}>
           <span>{key.replaceAll("_", " ")}</span>
-          <strong>{key.includes("fecha") ? formatDate(item?.[key]) : String(item?.[key] ?? "-")}</strong>
+          <strong>{getDetailValue(key)}</strong>
         </div>
       ))}
       {Array.isArray(item?.detalles) ? (
         <section className={styles.orderLines}>
-          <h3>Articulos</h3>
+          <h3>{config.key === "pagos" ? "Articulos del pedido" : "Articulos"}</h3>
           {item.detalles.map((line) => (
             <div key={line.id}>
               <span><strong>{line.nombre_articulo}</strong><small>{line.codigo_articulo}</small></span>
@@ -431,13 +468,14 @@ function DetailContent({ config, item }) {
   );
 }
 
-export default function AdminResourcePage({ config, context, empresaSlug, onDataChanged }) {
+export default function AdminResourcePage({ config, context, empresaSlug, onDataChanged, onNavigate }) {
   const [items, setItems] = useState([]);
   const [count, setCount] = useState(0);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [searchDraft, setSearchDraft] = useState("");
   const [includeInactive, setIncludeInactive] = useState(true);
+  const [statusFilter, setStatusFilter] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [optionData, setOptionData] = useState({});
@@ -447,6 +485,14 @@ export default function AdminResourcePage({ config, context, empresaSlug, onData
   const [isSaving, setIsSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [confirmTarget, setConfirmTarget] = useState(null);
+  const [isActionRunning, setIsActionRunning] = useState(false);
+  const [actionError, setActionError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+  const [isRelatedDetailLoading, setIsRelatedDetailLoading] = useState(false);
+  const [relatedDetailError, setRelatedDetailError] = useState("");
   const pageSize = 20;
   const pageCount = Math.max(1, Math.ceil(count / pageSize));
 
@@ -462,6 +508,9 @@ export default function AdminResourcePage({ config, context, empresaSlug, onData
         page,
         tamano_pagina: pageSize,
         orden: config.order,
+        ...(config.statusFilter && statusFilter
+          ? { [config.statusFilter.param]: statusFilter }
+          : {}),
       });
       const nextItems = Array.isArray(payload?.results) ? payload.results : Array.isArray(payload) ? payload : [];
       setItems(nextItems);
@@ -474,12 +523,21 @@ export default function AdminResourcePage({ config, context, empresaSlug, onData
   }
 
   useEffect(() => {
+    const routeParams = new URLSearchParams(window.location.search);
+    const routeSearch = routeParams.get("buscar")?.trim() || "";
+    const routeStatus = config.statusFilter
+      ? routeParams.get(config.statusFilter.param)?.trim() || ""
+      : "";
     setPage(1);
+    setStatusFilter(routeStatus);
+    setSearch(routeSearch);
+    setSearchDraft(routeSearch);
+    setSuccessMessage("");
   }, [empresaSlug, config.key]);
 
   useEffect(() => {
     loadItems();
-  }, [config.key, empresaSlug, includeInactive, page, search]);
+  }, [config.key, empresaSlug, includeInactive, page, search, statusFilter]);
 
   useEffect(() => {
     let active = true;
@@ -516,10 +574,55 @@ export default function AdminResourcePage({ config, context, empresaSlug, onData
     };
   }, [config.key, empresaSlug]);
 
-  function openEditor(item = null) {
+  async function openEditor(item = null) {
     setFieldErrors({});
+    setIsRelatedDetailLoading(false);
+    setRelatedDetailError("");
     setDraft(getInitialDraft(config, item, optionData));
     setEditor({ mode: item ? (config.readOnly ? "detail" : "edit") : "create", item });
+
+    if (!item || config.key !== "pagos" || Array.isArray(item.detalles)) return;
+
+    setIsRelatedDetailLoading(true);
+    const paymentReference = item.referencia;
+
+    try {
+      let orderId = typeof item.pedido === "object" ? item.pedido?.id : item.pedido;
+
+      if (!orderId && item.pedido_numero) {
+        const payload = await listAdminResource("/pedidos/pedidos/", empresaSlug, {
+          buscar: item.pedido_numero,
+          paginar: true,
+          page: 1,
+          tamano_pagina: 10,
+        });
+        const candidates = Array.isArray(payload?.results) ? payload.results : Array.isArray(payload) ? payload : [];
+        const matchingOrder = candidates.find((order) => order.numero === item.pedido_numero) || candidates[0];
+        orderId = matchingOrder?.id;
+      }
+
+      if (!orderId) {
+        throw new Error("El pago no incluye un pedido relacionado.");
+      }
+
+      const order = await getAdminResourceDetail("/pedidos/pedidos/", orderId, empresaSlug);
+      setEditor((current) => {
+        if (current?.item?.referencia !== paymentReference) return current;
+        return {
+          ...current,
+          item: {
+            ...current.item,
+            detalles: Array.isArray(order?.detalles) ? order.detalles : [],
+          },
+        };
+      });
+    } catch (requestError) {
+      setRelatedDetailError(
+        getErrorMessage(requestError, "No se pudieron cargar los articulos de este pedido."),
+      );
+    } finally {
+      setIsRelatedDetailLoading(false);
+    }
   }
 
   function closeEditor() {
@@ -527,6 +630,8 @@ export default function AdminResourcePage({ config, context, empresaSlug, onData
     setEditor(null);
     setDraft({});
     setFieldErrors({});
+    setIsRelatedDetailLoading(false);
+    setRelatedDetailError("");
   }
 
   async function handleSave(event) {
@@ -606,6 +711,112 @@ export default function AdminResourcePage({ config, context, empresaSlug, onData
     }
   }
 
+  function openCancellation(item) {
+    setCancelTarget(item);
+    setCancelReason("");
+    setActionError("");
+    setSuccessMessage("");
+  }
+
+  function openBranchConfirmation(item) {
+    setConfirmTarget(item);
+    setActionError("");
+    setSuccessMessage("");
+  }
+
+  function manageBranchOrderPayment(item) {
+    setEditor(null);
+    onNavigate?.("pagos", { buscar: item?.numero || "", estado: "pendiente" });
+  }
+
+  function closeActionModal() {
+    if (isActionRunning) return;
+    setCancelTarget(null);
+    setCancelReason("");
+    setConfirmTarget(null);
+    setActionError("");
+  }
+
+  async function handleCancelPendingOrder() {
+    const reason = cancelReason.trim();
+    if (!reason) {
+      setActionError("Escribe el motivo de la cancelacion.");
+      return;
+    }
+
+    setIsActionRunning(true);
+    setActionError("");
+    setError("");
+
+    try {
+      const result = await cancelPendingOrder(cancelTarget.id, reason);
+      setCancelTarget(null);
+      setCancelReason("");
+      setEditor(null);
+      await loadItems();
+      setSuccessMessage(
+        result?.duplicado
+          ? "El pedido ya estaba cancelado. La auditoria fue conservada."
+          : "Pedido pendiente cancelado correctamente.",
+      );
+      onDataChanged?.("pedidos", result);
+      onDataChanged?.("pagos", result);
+    } catch (requestError) {
+      const message = getErrorMessage(
+        requestError,
+        "No se pudo cancelar el pedido pendiente.",
+      );
+
+      if ([400, 404].includes(requestError?.status)) {
+        setCancelTarget(null);
+        setCancelReason("");
+        setEditor(null);
+        await loadItems();
+        setError(message);
+      } else {
+        setActionError(message);
+      }
+    } finally {
+      setIsActionRunning(false);
+    }
+  }
+
+  async function handleConfirmBranchPayment() {
+    setIsActionRunning(true);
+    setActionError("");
+    setError("");
+
+    try {
+      const result = await confirmBranchPayment(confirmTarget.referencia);
+      setConfirmTarget(null);
+      setEditor(null);
+      await loadItems();
+      setSuccessMessage(
+        result?.duplicado
+          ? "El cobro en sucursal ya estaba confirmado."
+          : "Cobro en sucursal confirmado correctamente.",
+      );
+      onDataChanged?.("pagos", result);
+      onDataChanged?.("pedidos", result);
+    } catch (requestError) {
+      const message = getErrorMessage(
+        requestError,
+        "No se pudo confirmar el cobro en sucursal.",
+      );
+
+      if ([400, 404].includes(requestError?.status)) {
+        setConfirmTarget(null);
+        setEditor(null);
+        await loadItems();
+        setError(message);
+      } else {
+        setActionError(message);
+      }
+    } finally {
+      setIsActionRunning(false);
+    }
+  }
+
   async function confirmDelete() {
     if (!deleteTarget) return;
     setIsDeleting(true);
@@ -656,10 +867,28 @@ export default function AdminResourcePage({ config, context, empresaSlug, onData
             Mostrar inactivos
           </label>
         ) : null}
+        {config.statusFilter ? (
+          <label className={styles.compactSelect}>
+            <span>{config.statusFilter.label}</span>
+            <select
+              aria-label={config.statusFilter.label}
+              onChange={(event) => {
+                setPage(1);
+                setStatusFilter(event.target.value);
+              }}
+              value={statusFilter}
+            >
+              {config.statusFilter.options.map((option) => (
+                <option key={option.value || "todos"} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </label>
+        ) : null}
         <span className={styles.resultCount}>{count} registros</span>
       </div>
 
       {error ? <div className={styles.inlineError} role="alert"><CircleAlert size={18} /><span>{error}</span><button aria-label="Cerrar error" onClick={() => setError("")} type="button"><X size={16} /></button></div> : null}
+      {successMessage ? <div className={styles.successBanner} role="status"><BadgeCheck size={18} /><span>{successMessage}</span><button aria-label="Cerrar mensaje" onClick={() => setSuccessMessage("")} type="button"><X size={16} /></button></div> : null}
 
       <div className={styles.tableFrame}>
         {isLoading ? (
@@ -683,6 +912,9 @@ export default function AdminResourcePage({ config, context, empresaSlug, onData
                       {config.columns.map((column) => <td key={column.key} data-label={column.label}><CellValue column={column} item={item} /></td>)}
                       <td className={styles.rowActions}>
                         <button aria-label={config.readOnly ? "Ver detalle" : "Editar"} onClick={() => openEditor(item)} title={config.readOnly ? "Ver detalle" : "Editar"} type="button">{config.readOnly ? <Search size={17} /> : <Edit3 size={17} />}</button>
+                        {canManageBranchOrderPayment(config, item) ? <button aria-label="Ir a confirmar pago en sucursal" className={styles.confirmIconButton} onClick={() => manageBranchOrderPayment(item)} title="Ir a confirmar pago en sucursal" type="button"><BadgeCheck size={17} /></button> : null}
+                        {canConfirmBranchPayment(config, item) ? <button aria-label="Confirmar cobro en sucursal" className={styles.confirmIconButton} onClick={() => openBranchConfirmation(item)} title="Confirmar cobro en sucursal" type="button"><BadgeCheck size={17} /></button> : null}
+                        {canCancelPendingOrder(config, item) ? <button aria-label="Cancelar pedido pendiente" className={styles.dangerIconButton} onClick={() => openCancellation(item)} title="Cancelar pedido pendiente" type="button"><Ban size={17} /></button> : null}
                         {config.statusField && !config.readOnly && config.key !== "contactos" ? <button aria-label={item[config.statusField] ? "Desactivar" : "Activar"} onClick={() => toggleStatus(item)} title={item[config.statusField] ? "Desactivar" : "Activar"} type="button"><Power size={17} /></button> : null}
                         {canDelete ? <button aria-label="Eliminar" className={styles.dangerIconButton} onClick={() => setDeleteTarget(item)} title="Eliminar" type="button"><Trash2 size={17} /></button> : null}
                       </td>
@@ -710,7 +942,19 @@ export default function AdminResourcePage({ config, context, empresaSlug, onData
               <div><span>{editor.mode === "create" ? "Nuevo registro" : editor.mode === "detail" ? "Detalle" : "Edicion"}</span><h2>{editor.mode === "create" ? `Crear ${config.singular}` : displayName(editor.item)}</h2></div>
               <button aria-label="Cerrar" onClick={closeEditor} title="Cerrar" type="button"><X size={20} /></button>
             </header>
-            {editor.mode === "detail" ? <DetailContent config={config} item={editor.item} /> : (
+            {editor.mode === "detail" ? (
+              <div className={styles.readOnlyDrawerBody}>
+                <DetailContent config={config} item={editor.item} />
+                {isRelatedDetailLoading ? <div className={styles.relatedDetailState}><LoaderCircle className={styles.spin} size={18} /> Cargando articulos del pedido</div> : null}
+                {relatedDetailError ? <div className={`${styles.relatedDetailState} ${styles.relatedDetailError}`} role="alert"><CircleAlert size={18} /> {relatedDetailError}</div> : null}
+                <footer className={styles.drawerFooter}>
+                  <button className={styles.secondaryButton} onClick={closeEditor} type="button">Cerrar</button>
+                  {canManageBranchOrderPayment(config, editor.item) ? <button className={styles.primaryButton} onClick={() => manageBranchOrderPayment(editor.item)} type="button"><BadgeCheck size={17} /> Ir a confirmar pago</button> : null}
+                  {canConfirmBranchPayment(config, editor.item) ? <button className={styles.primaryButton} onClick={() => openBranchConfirmation(editor.item)} type="button"><BadgeCheck size={17} /> Confirmar cobro</button> : null}
+                  {canCancelPendingOrder(config, editor.item) ? <button className={styles.dangerButton} onClick={() => openCancellation(editor.item)} type="button"><Ban size={17} /> Cancelar pendiente</button> : null}
+                </footer>
+              </div>
+            ) : (
               <form className={styles.editorForm} onSubmit={handleSave}>
                 {config.detailFields && editor.item ? <DetailContent config={config} item={editor.item} /> : null}
                 <div className={styles.formGrid}>
@@ -733,6 +977,56 @@ export default function AdminResourcePage({ config, context, empresaSlug, onData
             <h2 id="delete-title">Eliminar {config.singular}</h2>
             <p>Se eliminara <strong>{displayName(deleteTarget)}</strong>. Si tiene historial relacionado, el servidor impedira la operacion.</p>
             <div><button className={styles.secondaryButton} disabled={isDeleting} onClick={() => setDeleteTarget(null)} type="button">Cancelar</button><button className={styles.dangerButton} disabled={isDeleting} onClick={confirmDelete} type="button">{isDeleting ? <LoaderCircle className={styles.spin} size={17} /> : <Trash2 size={17} />} Eliminar</button></div>
+          </div>
+        </div>
+      ) : null}
+
+      {cancelTarget ? (
+        <div className={styles.modalLayer} role="presentation">
+          <div aria-labelledby="cancel-order-title" aria-modal="true" className={styles.confirmDialog} role="dialog">
+            <span className={styles.dangerMark}><Ban size={21} /></span>
+            <h2 id="cancel-order-title">Cancelar pedido pendiente</h2>
+            <p>
+              Pedido <strong>{displayName(cancelTarget)}</strong> por <strong>{currencyFormatter.format(Number(cancelTarget.total) || 0)}</strong>.
+              Esta accion quedara registrada en la auditoria.
+            </p>
+            <label className={styles.actionReason}>
+              <span>Motivo de cancelacion</span>
+              <textarea
+                disabled={isActionRunning}
+                maxLength={500}
+                onChange={(event) => {
+                  setCancelReason(event.target.value);
+                  if (actionError) setActionError("");
+                }}
+                placeholder="Explica por que se cancela el pedido"
+                required
+                value={cancelReason}
+              />
+            </label>
+            {actionError ? <p className={styles.modalError} role="alert">{actionError}</p> : null}
+            <div>
+              <button className={styles.secondaryButton} disabled={isActionRunning} onClick={closeActionModal} type="button">Volver</button>
+              <button className={styles.dangerButton} disabled={isActionRunning || !cancelReason.trim()} onClick={handleCancelPendingOrder} type="button">{isActionRunning ? <LoaderCircle className={styles.spin} size={17} /> : <Ban size={17} />} Confirmar cancelacion</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {confirmTarget ? (
+        <div className={styles.modalLayer} role="presentation">
+          <div aria-labelledby="confirm-payment-title" aria-modal="true" className={styles.confirmDialog} role="dialog">
+            <span className={styles.successMark}><BadgeCheck size={21} /></span>
+            <h2 id="confirm-payment-title">Confirmar cobro en sucursal</h2>
+            <p>
+              Se confirmara la referencia <strong>{confirmTarget.referencia}</strong> por <strong>{currencyFormatter.format(Number(confirmTarget.monto) || 0)}</strong>.
+              Verifica que el pago haya sido recibido antes de continuar.
+            </p>
+            {actionError ? <p className={styles.modalError} role="alert">{actionError}</p> : null}
+            <div>
+              <button className={styles.secondaryButton} disabled={isActionRunning} onClick={closeActionModal} type="button">Volver</button>
+              <button className={styles.primaryButton} disabled={isActionRunning} onClick={handleConfirmBranchPayment} type="button">{isActionRunning ? <LoaderCircle className={styles.spin} size={17} /> : <BadgeCheck size={17} />} Confirmar cobro</button>
+            </div>
           </div>
         </div>
       ) : null}

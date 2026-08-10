@@ -60,6 +60,14 @@ export function listAdminResource(path, empresaSlug, filters = {}) {
   );
 }
 
+export function getAdminResourceDetail(path, id, empresaSlug) {
+  return apiGet(
+    `${path}${encodeURIComponent(id)}/`,
+    { empresa_slug: empresaSlug },
+    ADMIN_REQUEST_OPTIONS,
+  );
+}
+
 export async function listAllAdminResource(path, empresaSlug, filters = {}) {
   const firstPage = await listAdminResource(path, empresaSlug, {
     ...filters,
@@ -115,6 +123,22 @@ export function runAdminAction(path, id, action, empresaSlug, payload = {}) {
   return apiPost(
     `${path}${encodeURIComponent(id)}/${action}/?empresa_slug=${encodeURIComponent(empresaSlug)}&incluir_inactivos=true`,
     payload,
+    ADMIN_REQUEST_OPTIONS,
+  );
+}
+
+export function cancelPendingOrder(orderId, reason) {
+  return apiPost(
+    `/pedidos/pedidos/${encodeURIComponent(orderId)}/cancelar-pendiente/`,
+    { motivo: String(reason || "").trim() },
+    ADMIN_REQUEST_OPTIONS,
+  );
+}
+
+export function confirmBranchPayment(reference) {
+  return apiPost(
+    `/pagos/${encodeURIComponent(reference)}/confirmar-en-sucursal/`,
+    {},
     ADMIN_REQUEST_OPTIONS,
   );
 }

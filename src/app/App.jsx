@@ -46,6 +46,7 @@ import styles from "./App.module.css";
 
 const LOCAL_EMPRESA_SLUG = import.meta.env.VITE_EMPRESA_SLUG || "";
 const CART_STORAGE_PREFIX = "ventas_cart_v1";
+const ACCOUNT_CART_STORAGE_PREFIX = "ventas_account_cart_v1";
 const ADMIN_COMPANY_STORAGE_KEY = "ventas_admin_empresa_slug";
 const ADMINISTRATIVE_ROLES = new Set([
   "administrador_maestro",
@@ -55,6 +56,20 @@ const ADMINISTRATIVE_ROLES = new Set([
 
 function getCartStorageKey(empresaSlug) {
   return `${CART_STORAGE_PREFIX}:${String(empresaSlug).trim().toLowerCase()}`;
+}
+
+function getAccountCartStorageKey(empresaSlug, session) {
+  const owner = session?.usuario?.id || session?.usuario?.email;
+
+  if (!empresaSlug || !owner) {
+    return "";
+  }
+
+  return [
+    ACCOUNT_CART_STORAGE_PREFIX,
+    String(empresaSlug).trim().toLowerCase(),
+    String(owner).trim().toLowerCase(),
+  ].join(":");
 }
 
 function normalizeCartArticleType(value) {
@@ -146,13 +161,13 @@ function getServerCartItems(payload) {
   });
 }
 
-function getStoredCart(empresaSlug) {
-  if (typeof window === "undefined" || !empresaSlug) {
+function getStoredCartByKey(storageKey) {
+  if (typeof window === "undefined" || !storageKey) {
     return [];
   }
 
   try {
-    const storedValue = window.localStorage.getItem(getCartStorageKey(empresaSlug));
+    const storedValue = window.localStorage.getItem(storageKey);
     const storedItems = storedValue ? JSON.parse(storedValue) : [];
 
     if (!Array.isArray(storedItems)) {
@@ -165,12 +180,10 @@ function getStoredCart(empresaSlug) {
   }
 }
 
-function saveStoredCart(empresaSlug, items) {
-  if (typeof window === "undefined" || !empresaSlug) {
+function saveStoredCartByKey(storageKey, items) {
+  if (typeof window === "undefined" || !storageKey) {
     return;
   }
-
-  const storageKey = getCartStorageKey(empresaSlug);
 
   try {
     if (items.length === 0) {
@@ -182,6 +195,22 @@ function saveStoredCart(empresaSlug, items) {
   } catch {
     // El carrito sigue funcionando en memoria si el navegador bloquea el almacenamiento.
   }
+}
+
+function getStoredCart(empresaSlug) {
+  if (!empresaSlug) {
+    return [];
+  }
+
+  return getStoredCartByKey(getCartStorageKey(empresaSlug));
+}
+
+function saveStoredCart(empresaSlug, items) {
+  if (!empresaSlug) {
+    return;
+  }
+
+  saveStoredCartByKey(getCartStorageKey(empresaSlug), items);
 }
 
 function validateServerCartPayload(payload, empresaSlug) {
@@ -287,6 +316,7 @@ function App() {
   const [cartOpen, setCartOpen] = useState(false);
   const [cartItems, setCartItems] = useState([]);
   const [cartStorageReadySlug, setCartStorageReadySlug] = useState("");
+  const [accountCartStorageReadyKey, setAccountCartStorageReadyKey] = useState("");
   const [serverCartId, setServerCartId] = useState(null);
   const [isCartLoading, setIsCartLoading] = useState(false);
   const [isCartPersisting, setIsCartPersisting] = useState(false);
@@ -490,6 +520,7 @@ function App() {
     let isActive = true;
 
     setCartStorageReadySlug("");
+    setAccountCartStorageReadyKey("");
     serverCartRequestRef.current = null;
     setServerCartId(null);
     setCartItems([]);
@@ -508,6 +539,12 @@ function App() {
       setCartStorageReadySlug(empresaSlug);
       setIsCartLoading(false);
       return undefined;
+    }
+
+    const accountStorageKey = getAccountCartStorageKey(empresaSlug, authSession);
+    if (accountStorageKey) {
+      setCartItems(getStoredCartByKey(accountStorageKey));
+      setAccountCartStorageReadyKey(accountStorageKey);
     }
 
     async function loadServerCart() {
@@ -590,6 +627,28 @@ function App() {
 
     saveStoredCart(empresaSlug, cartItems);
   }, [authSession, cartItems, cartStorageReadySlug, empresaSlug, isAuthRestoring]);
+
+  useEffect(() => {
+    const accountStorageKey = getAccountCartStorageKey(empresaSlug, authSession);
+
+    if (
+      !accountStorageKey ||
+      isAuthRestoring ||
+      isCartLoading ||
+      accountCartStorageReadyKey !== accountStorageKey
+    ) {
+      return;
+    }
+
+    saveStoredCartByKey(accountStorageKey, cartItems);
+  }, [
+    accountCartStorageReadyKey,
+    authSession,
+    cartItems,
+    empresaSlug,
+    isAuthRestoring,
+    isCartLoading,
+  ]);
 
   useEffect(() => {
     let isActive = true;
@@ -1527,6 +1586,7 @@ function App() {
         isOpen={cartOpen}
         isCalculating={isCartCalculating}
         isPersisting={isCartPersisting}
+        isUnavailable={Boolean(authSession) && !isCartLoading && !serverCartId}
         items={cartDisplayItems}
         onClose={() => setCartOpen(false)}
         onCheckout={handleCheckout}

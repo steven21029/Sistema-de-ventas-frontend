@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   ArrowRight,
+  Building2,
   Boxes,
   ClipboardList,
   CreditCard,
@@ -12,6 +13,7 @@ import {
   PackageCheck,
   ShoppingBag,
   Users,
+  WalletCards,
 } from "lucide-react";
 import {
   downloadSalesReport,
@@ -19,7 +21,8 @@ import {
   getSalesSummary,
   listAdminResource,
 } from "../services/adminService";
-import { getAdminPaymentStatus } from "../utils/paymentStatus";
+import { getAdminPaymentMethod } from "../utils/paymentStatus";
+import { getApiErrorMessage } from "../utils/apiError";
 import { asArray } from "../services/apiClient";
 import styles from "./AdminApp.module.css";
 
@@ -168,6 +171,15 @@ function numberFrom(source, ...keys) {
   return 0;
 }
 
+function formatDecimalMoney(value) {
+  const match = String(value ?? "0.00").trim().match(/^(-?)(\d+)(?:\.(\d+))?$/);
+  if (!match) return "L 0.00";
+
+  const integer = match[2].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const fraction = String(match[3] || "").padEnd(2, "0").slice(0, 2);
+  return `${match[1] ? "-" : ""}L ${integer}.${fraction}`;
+}
+
 function trendFromPercentage(value) {
   if (value === null || value === undefined || value === "") {
     return { direction: "neutral", label: "Sin comparacion disponible" };
@@ -259,32 +271,46 @@ function statusGroup(value) {
   return "other";
 }
 
-function buildStatusBreakdown(payload, summary) {
+function buildStatusBreakdown(payload, summary, pendingMethods) {
   const counts = new Map();
 
   asArray(payload?.estados).forEach((entry) => {
     const group = statusGroup(entry.estado || entry.estado_pago || entry.nombre);
     const count = numberFrom(entry, "cantidad", "pedidos", "total");
+    if (group === "pending" && pendingMethods.available) return;
     counts.set(group, (counts.get(group) || 0) + count);
   });
 
-  if (counts.size === 0) {
-    const paid = numberFrom(summary, "ventas_confirmadas");
-    const pending = numberFrom(summary, "pedidos_pendientes");
-    if (paid > 0) counts.set("paid", paid);
-    if (pending > 0) counts.set("pending", pending);
+  const paid = numberFrom(summary, "ventas_confirmadas");
+  const pending = numberFrom(summary, "pedidos_pendientes");
+  if (!counts.has("paid") && paid > 0) counts.set("paid", paid);
+
+  if (pendingMethods.available) {
+    if (pendingMethods.branch.count > 0) counts.set("branchPending", pendingMethods.branch.count);
+    if (pendingMethods.online.count > 0) counts.set("onlinePending", pendingMethods.online.count);
+    if (pendingMethods.noMethod.count > 0) counts.set("noMethod", pendingMethods.noMethod.count);
+  } else if (!counts.has("pending") && pending > 0) {
+    counts.set("pending", pending);
   }
 
   const labels = {
     paid: "Confirmadas",
     pending: "Pendientes",
+    branchPending: "Por cobrar en sucursal",
+    onlinePending: "Esperando pago en linea",
+    noMethod: "Sin metodo de pago",
     rejected: "Rechazadas",
     other: "Otros estados",
   };
+  const amounts = {
+    branchPending: pendingMethods.branch.amount,
+    onlinePending: pendingMethods.online.amount,
+    noMethod: pendingMethods.noMethod.amount,
+  };
 
-  return ["paid", "pending", "rejected", "other"]
+  return ["paid", "branchPending", "onlinePending", "noMethod", "pending", "rejected", "other"]
     .filter((key) => (counts.get(key) || 0) > 0)
-    .map((key) => ({ key, label: labels[key], count: counts.get(key) }));
+    .map((key) => ({ key, label: labels[key], count: counts.get(key), amount: amounts[key] }));
 }
 
 function normalizeTopProducts(payload) {
@@ -310,11 +336,58 @@ function normalizeTopProducts(payload) {
     .slice(0, 5);
 }
 
+function normalizePaymentMethods(payload, summary) {
+  const methods = summary?.pagos_por_metodo || payload?.pagos_por_metodo || {};
+
+  function getMethod(method) {
+    const entry = methods?.[method] || {};
+    return {
+      amount: numberFrom(entry, "monto", "monto_total", "total"),
+      count: numberFrom(entry, "cantidad", "pagos", "total_pagos"),
+    };
+  }
+
+  return {
+    branch: getMethod("sucursal"),
+    online: getMethod("en_linea"),
+  };
+}
+
+function normalizePendingMethods(payload, summary) {
+  const methods = summary?.pendientes_por_metodo || payload?.pendientes_por_metodo;
+
+  function getMethod(method) {
+    const entry = methods?.[method] || {};
+    return {
+      amount: String(entry?.monto ?? "0.00"),
+      count: numberFrom(entry, "cantidad", "pedidos", "total_pedidos"),
+    };
+  }
+
+  const branch = getMethod("sucursal");
+  const online = getMethod("en_linea");
+  const noMethod = getMethod("sin_metodo");
+
+  return {
+    available: Boolean(methods && typeof methods === "object"),
+    branch,
+    online,
+    noMethod,
+    totalCount: branch.count + online.count + noMethod.count,
+  };
+}
+
+function formatApprovedPaymentCount(count) {
+  return `${count} ${count === 1 ? "pago aprobado" : "pagos aprobados"}`;
+}
+
 function buildSalesAnalytics(currentPayload, rangePayload) {
   const current = currentPayload?.resumen || {};
   const range = rangePayload?.resumen || {};
   const monthSeries = normalizeMonthSeries(rangePayload);
-  const statusBreakdown = buildStatusBreakdown(currentPayload, current);
+  const paymentMethods = normalizePaymentMethods(currentPayload, current);
+  const pendingMethods = normalizePendingMethods(currentPayload, current);
+  const statusBreakdown = buildStatusBreakdown(currentPayload, current, pendingMethods);
   const rangeRevenueFromSeries = monthSeries.reduce(
     (total, entry) => total + entry.revenue,
     0,
@@ -327,8 +400,8 @@ function buildSalesAnalytics(currentPayload, rangePayload) {
   return {
     averageTicket: numberFrom(current, "ticket_promedio"),
     monthSeries,
-    pendingAmount: numberFrom(current, "monto_pendiente"),
-    pendingCount: numberFrom(current, "pedidos_pendientes"),
+    paymentMethods,
+    pendingMethods,
     revenue: numberFrom(current, "ingresos_confirmados"),
     revenueChange: getTrend(currentPayload, "revenue"),
     sales: numberFrom(current, "ventas_confirmadas"),
@@ -350,14 +423,7 @@ function buildSalesAnalytics(currentPayload, rangePayload) {
 }
 
 function getErrorMessage(error, fallback) {
-  const payload = error?.payload;
-  if (payload?.detail) return payload.detail;
-  if (payload?.mensaje) return payload.mensaje;
-  if (payload?.error) return payload.error;
-  if (Array.isArray(payload?.non_field_errors)) {
-    return payload.non_field_errors.join(" ");
-  }
-  return error?.message || fallback;
+  return getApiErrorMessage(error, fallback);
 }
 
 function saveFile(blob, filename) {
@@ -554,7 +620,7 @@ export default function AdminDashboard({ context, empresaSlug, onNavigate }) {
         <div>
           <span className={styles.eyebrow}>Empresa activa</span>
           <h1>{company.nombre}</h1>
-          <p>Ventas confirmadas, cobros pendientes y actividad comercial.</p>
+          <p>Ventas confirmadas, pagos por metodo y actividad comercial.</p>
         </div>
         <div className={styles.companyMode}>
           <span>Operacion</span>
@@ -679,13 +745,23 @@ export default function AdminDashboard({ context, empresaSlug, onNavigate }) {
           </span>
         </article>
         <article className={styles.metricItem}>
-          <span className={`${styles.metricIcon} ${styles.metricIconWarning}`}>
-            <AlertTriangle size={20} />
+          <span className={`${styles.metricIcon} ${styles.metricIconBranch}`}>
+            <Building2 size={20} />
           </span>
           <span className={styles.metricCopy}>
-            <small>Pendiente de pago</small>
-            <strong>{money.format(analytics.pendingAmount)}</strong>
-            <em>{analytics.pendingCount} pedidos pendientes</em>
+            <small>Pagos en sucursal</small>
+            <strong>{money.format(analytics.paymentMethods.branch.amount)}</strong>
+            <em>{formatApprovedPaymentCount(analytics.paymentMethods.branch.count)}</em>
+          </span>
+        </article>
+        <article className={styles.metricItem}>
+          <span className={`${styles.metricIcon} ${styles.metricIconOnline}`}>
+            <WalletCards size={20} />
+          </span>
+          <span className={styles.metricCopy}>
+            <small>Pagos en linea</small>
+            <strong>{money.format(analytics.paymentMethods.online.amount)}</strong>
+            <em>{formatApprovedPaymentCount(analytics.paymentMethods.online.count)}</em>
           </span>
         </article>
       </div>
@@ -758,7 +834,10 @@ export default function AdminDashboard({ context, empresaSlug, onNavigate }) {
             <div className={styles.statusBreakdown}>
               {analytics.statusBreakdown.map((entry) => (
                 <div key={entry.key}>
-                  <span><strong>{entry.label}</strong><small>{entry.count}</small></span>
+                  <span>
+                    <strong>{entry.label}</strong>
+                    <small>{entry.amount !== undefined ? `${entry.count} · ${formatDecimalMoney(entry.amount)}` : entry.count}</small>
+                  </span>
                   <i>
                     <b
                       className={styles[`status_${entry.key}`]}
@@ -773,6 +852,24 @@ export default function AdminDashboard({ context, empresaSlug, onNavigate }) {
           ) : (
             <p className={styles.bandEmpty}>No hay pedidos registrados este mes.</p>
           )}
+          {analytics.pendingMethods.totalCount > 0 ? (
+            <footer className={styles.pendingPanelFooter}>
+              <span>
+                <strong>{analytics.pendingMethods.totalCount}</strong>
+                {analytics.pendingMethods.totalCount === 1 ? " pedido por gestionar" : " pedidos por gestionar"}
+              </span>
+              <div className={styles.pendingPanelActions}>
+                <button onClick={() => onNavigate("pedidos")} type="button">
+                  Revisar pedidos <ArrowRight size={15} />
+                </button>
+                {analytics.pendingMethods.branch.count > 0 ? (
+                  <button onClick={() => onNavigate("pagos", { estado: "pendiente" })} type="button">
+                    Confirmar cobros <ArrowRight size={15} />
+                  </button>
+                ) : null}
+              </div>
+            </footer>
+          ) : null}
         </section>
       </div>
 
@@ -807,7 +904,7 @@ export default function AdminDashboard({ context, empresaSlug, onNavigate }) {
               {recentOrders.map((order) => (
                 <button key={order.id} onClick={() => onNavigate("pedidos")} type="button">
                   <span><strong>{order.numero}</strong><small>{order.usuario_nombre || "Cliente"}</small></span>
-                  <span><strong>{money.format(Number(order.total) || 0)}</strong><small>{getAdminPaymentStatus(order.estado_pago, order).label}</small></span>
+                  <span><strong>{money.format(Number(order.total) || 0)}</strong><small>{getAdminPaymentMethod(order.metodo_pago).label}</small></span>
                 </button>
               ))}
             </div>

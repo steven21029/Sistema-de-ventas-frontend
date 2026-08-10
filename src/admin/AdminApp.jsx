@@ -326,9 +326,16 @@ export default function AdminApp() {
     window.history.pushState({}, "", "/administracion/resumen");
   }
 
-  function navigate(page) {
-    const nextPath = `/administracion/${page}`;
-    if (window.location.pathname !== nextPath) window.history.pushState({}, "", nextPath);
+  function navigate(page, params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.buscar) searchParams.set("buscar", params.buscar);
+    if (params.estado) searchParams.set("estado", params.estado);
+    if (params.estado_pago) searchParams.set("estado_pago", params.estado_pago);
+    const query = searchParams.toString();
+    const nextPath = `/administracion/${page}${query ? `?${query}` : ""}`;
+    if (`${window.location.pathname}${window.location.search}` !== nextPath) {
+      window.history.pushState({}, "", nextPath);
+    }
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -351,7 +358,7 @@ export default function AdminApp() {
     if (currentPage === "inventario") return <InventoryPage company={company} empresaSlug={company.slug} />;
     const config = configs[currentPage];
     if (config?.canAccess === false) return <AdminDashboard context={context} empresaSlug={company.slug} onNavigate={navigate} />;
-    if (config) return <AdminResourcePage config={config} context={context} empresaSlug={company.slug} onDataChanged={(key) => { if (["empresas"].includes(key)) resolveContext(company.slug); }} />;
+    if (config) return <AdminResourcePage config={config} context={context} empresaSlug={company.slug} onDataChanged={(key) => { if (["empresas"].includes(key)) resolveContext(company.slug); }} onNavigate={navigate} />;
     return <AdminDashboard context={context} empresaSlug={company.slug} onNavigate={navigate} />;
   }
 
