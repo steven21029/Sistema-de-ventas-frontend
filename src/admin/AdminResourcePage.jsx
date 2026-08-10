@@ -22,6 +22,7 @@ import {
   updateAdminResource,
 } from "../services/adminService";
 import { resolveMediaUrl } from "../services/apiClient";
+import { getAdminPaymentStatus } from "../utils/paymentStatus";
 import styles from "./AdminApp.module.css";
 
 const currencyFormatter = new Intl.NumberFormat("es-HN", {
@@ -95,15 +96,6 @@ function getStatusLabel(value, type) {
   if (type === "contactStatus") {
     return { nuevo: "Nuevo", pendiente: "Pendiente", respondido: "Respondido" }[value] || value;
   }
-  if (type === "paymentStatus") {
-    return {
-      pendiente: "Pendiente",
-      aprobado: "Aprobado",
-      pagado: "Pagado",
-      rechazado: "Rechazado",
-      cancelado: "Cancelado",
-    }[value] || value;
-  }
   return value ? "Activo" : "Inactivo";
 }
 
@@ -138,10 +130,13 @@ function CellValue({ column, item }) {
 
   if (["status", "contactStatus", "paymentStatus"].includes(column.type)) {
     const statusValue = column.type === "status" ? Boolean(value) : value;
+    const paymentStatus =
+      column.type === "paymentStatus" ? getAdminPaymentStatus(value, item) : null;
+    const statusTone = paymentStatus?.tone ?? statusValue;
     return (
-      <span className={`${styles.status} ${styles[`status_${String(statusValue)}`] || ""}`}>
+      <span className={`${styles.status} ${styles[`status_${String(statusTone)}`] || ""}`}>
         <span />
-        {getStatusLabel(statusValue, column.type)}
+        {paymentStatus?.label ?? getStatusLabel(statusValue, column.type)}
       </span>
     );
   }

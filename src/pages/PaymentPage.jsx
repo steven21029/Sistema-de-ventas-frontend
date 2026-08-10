@@ -95,7 +95,6 @@ function PaymentPage({ hasDelivery, onContinueShopping, onNavigatePayment, refer
   const [payment, setPayment] = useState(null);
   const [feedback, setFeedback] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -156,7 +155,7 @@ function PaymentPage({ hasDelivery, onContinueShopping, onNavigatePayment, refer
           }
         }
       } catch {
-        // La consulta manual sigue disponible si una actualizacion temporal falla.
+        // Conserva el estado actual si una consulta temporal falla.
       }
     }, 8000);
 
@@ -165,26 +164,6 @@ function PaymentPage({ hasDelivery, onContinueShopping, onNavigatePayment, refer
       window.clearInterval(refreshTimer);
     };
   }, [payment?.estado, reference]);
-
-  async function handleRefresh() {
-    setIsRefreshing(true);
-    setFeedback("");
-    setFeedbackTone("error");
-
-    try {
-      const payload = await getPago(reference);
-      setPayment(payload);
-      const context = getPaymentContext(reference);
-      if (payload?.estado === "aprobado" && !isBranchPayment(payload, context)) {
-        clearPaymentContext(reference);
-      }
-    } catch (error) {
-      setFeedback(getApiErrorMessage(error, "No se pudo actualizar el estado del pago."));
-      setFeedbackTone("error");
-    } finally {
-      setIsRefreshing(false);
-    }
-  }
 
   async function handleRetry() {
     const context = getPaymentContext(reference);
@@ -398,21 +377,6 @@ function PaymentPage({ hasDelivery, onContinueShopping, onNavigatePayment, refer
                   {isResending ? "Enviando" : "Reenviar por correo"}
                 </button>
               ) : null}
-              {payment.estado === "pendiente" && (
-                <button
-                  className={paymentUrl || branchPayment ? styles.secondaryButton : styles.providerButton}
-                  type="button"
-                  onClick={handleRefresh}
-                  disabled={isRefreshing}
-                >
-                  <RefreshCw
-                    size={18}
-                    className={isRefreshing ? styles.spinningIcon : ""}
-                    aria-hidden="true"
-                  />
-                  {isRefreshing ? "Actualizando" : "Actualizar estado"}
-                </button>
-              )}
               {payment.estado === "rechazado" && !branchPayment && (
                 <button
                   className={styles.providerButton}

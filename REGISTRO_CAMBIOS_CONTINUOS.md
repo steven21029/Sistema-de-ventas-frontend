@@ -1552,3 +1552,110 @@ Verificacion:
 - La descarga uso el nombre `prefactura-PED-001.pdf` enviado por el servidor.
 - Viewports 320 y 1440 px sin desbordamiento horizontal ni errores de consola.
 - `npm run build`: correcto; Vite transformo 1641 modulos.
+
+## 2026-08-10 - Sesion compartida entre tienda y panel
+
+Estado: corregido y verificado en frontend.
+
+Problema:
+
+- `Ir al panel administrativo` usaba `window.location.assign` y recargaba todo
+  el documento.
+- Como el access token se guarda solamente en memoria, la recarga lo eliminaba
+  y el panel dependia de una renovacion inmediata para recuperar la sesion.
+- Cuando la cookie de refresh no estaba disponible, se mostraba otro formulario
+  de inicio de sesion aunque el usuario acabara de autenticarse en la tienda.
+
+Solucion:
+
+- `src/main.jsx` ahora mantiene un enrutador raiz que alterna entre la tienda y
+  `AdminApp` al cambiar la ruta mediante History API.
+- El acceso al panel y el regreso a la tienda ya no recargan la pagina.
+- `restoreUsuarioSession` reutiliza primero el access token existente en memoria
+  y solo solicita refresh cuando no existe uno.
+- El token continua fuera de `localStorage` y `sessionStorage`.
+- Abrir o recargar directamente `/administracion` conserva el mecanismo seguro
+  de restauracion mediante refresh `HttpOnly`.
+
+Archivos modificados:
+
+- `src/main.jsx`.
+- `src/app/App.jsx`.
+- `src/admin/AdminApp.jsx`.
+- `src/services/apiClient.js`.
+- `src/services/authService.js`.
+- `CONTEXTO_CONTINUACION.md`.
+- `REGISTRO_CAMBIOS_CONTINUOS.md`.
+
+Verificacion:
+
+- Sesion administrativa restaurada en la tienda y traslado a
+  `/administracion` sin mostrar el login del panel.
+- Regreso a la tienda con la misma sesion activa.
+- Solo una llamada de refresh durante todo el recorrido.
+- Sin errores de consola.
+- `npm run build`: correcto; Vite transformo 1641 modulos.
+
+## 2026-08-10 - Validacion del registro y verificacion de correo
+
+Estado: implementado y compilado en frontend.
+
+Cambios:
+
+- Nombre completo elimina caracteres distintos de letras Unicode o espacios.
+- Telefono e identidad usan `type="text"`, `inputMode="numeric"` y eliminan
+  caracteres no numericos; identidad conserva un maximo de 13 digitos.
+- El codigo de verificacion conserva un maximo de 6 digitos y el servicio lo
+  envia como `string`.
+- Se agregaron botones `type="button"` con Eye/EyeOff de Lucide en login,
+  contrasena nueva y confirmacion.
+- El registro pasa directamente a la verificacion sin llamar al endpoint de
+  reenvio, porque el registro ya solicita el primer codigo.
+- El mensaje `Código reenviado` solo se muestra cuando
+  `/usuarios/reenviar-verificacion/` responde HTTP `200`.
+- Las respuestas de error continúan mostrando el mensaje util del backend.
+
+Archivos modificados:
+
+- `src/components/auth/AuthDialog.jsx`.
+- `src/components/auth/AuthDialog.module.css`.
+- `src/services/apiClient.js`.
+- `src/services/authService.js`.
+- `CONTEXTO_CONTINUACION.md`.
+- `REGISTRO_CAMBIOS_CONTINUOS.md`.
+
+Verificacion:
+
+- `npm run build`: correcto; Vite transformo 1641 modulos.
+
+## 2026-08-10 - Presentacion de pagos en sucursal
+
+Estado: implementado y verificado en frontend.
+
+Cambios:
+
+- Se elimino el boton `Actualizar estado` de la pantalla de pago.
+- La consulta automatica cada ocho segundos se mantiene mientras el pago esta
+  pendiente.
+- El estado administrativo `sin_pago` ahora se presenta como
+  `Pagadas en sucursal`.
+- Los pagos confirmados cuyo metodo es sucursal usan la misma etiqueta, los
+  pendientes muestran `Pendiente en sucursal` y los pagos en linea conservan
+  sus etiquetas originales.
+- La presentacion se aplica tanto en los listados administrativos como en
+  Pedidos recientes del dashboard.
+
+Archivos modificados:
+
+- `src/pages/PaymentPage.jsx`.
+- `src/admin/AdminResourcePage.jsx`.
+- `src/admin/AdminDashboard.jsx`.
+- `src/utils/paymentStatus.js`.
+- `CONTEXTO_CONTINUACION.md`.
+- `REGISTRO_CAMBIOS_CONTINUOS.md`.
+
+Verificacion:
+
+- Casos comprobados: `sin_pago`, sucursal pagado, sucursal pendiente y pago en
+  linea pagado.
+- `npm run build`: correcto; Vite transformo 1642 modulos.

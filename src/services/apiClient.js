@@ -197,6 +197,10 @@ export function setApiAccessToken(token) {
   accessToken = token || "";
 }
 
+export function hasApiAccessToken() {
+  return Boolean(accessToken);
+}
+
 export function setApiUnauthorizedHandler(handler) {
   unauthorizedHandler = typeof handler === "function" ? handler : null;
 
@@ -252,6 +256,19 @@ export function apiPost(path, body = {}, options = {}) {
     method: "POST",
     body,
   });
+}
+
+export async function apiPostWithMeta(path, body = {}, options = {}) {
+  const { payload, response } = await requestResult(path, {
+    ...options,
+    method: "POST",
+    body,
+  });
+
+  return {
+    payload,
+    status: response.status,
+  };
 }
 
 export function apiPatch(path, body = {}, options = {}) {

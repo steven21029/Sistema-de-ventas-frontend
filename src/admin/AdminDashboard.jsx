@@ -19,6 +19,7 @@ import {
   getSalesSummary,
   listAdminResource,
 } from "../services/adminService";
+import { getAdminPaymentStatus } from "../utils/paymentStatus";
 import { asArray } from "../services/apiClient";
 import styles from "./AdminApp.module.css";
 
@@ -806,7 +807,7 @@ export default function AdminDashboard({ context, empresaSlug, onNavigate }) {
               {recentOrders.map((order) => (
                 <button key={order.id} onClick={() => onNavigate("pedidos")} type="button">
                   <span><strong>{order.numero}</strong><small>{order.usuario_nombre || "Cliente"}</small></span>
-                  <span><strong>{money.format(Number(order.total) || 0)}</strong><small>{order.estado_pago}</small></span>
+                  <span><strong>{money.format(Number(order.total) || 0)}</strong><small>{getAdminPaymentStatus(order.estado_pago, order).label}</small></span>
                 </button>
               ))}
             </div>

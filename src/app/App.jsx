@@ -1103,7 +1103,8 @@ function App() {
       window.localStorage.setItem(ADMIN_COMPANY_STORAGE_KEY, empresaSlug);
     }
 
-    window.location.assign("/administracion");
+    window.history.pushState({}, "", "/administracion");
+    window.dispatchEvent(new PopStateEvent("popstate"));
   }
 
   async function handleLogout() {

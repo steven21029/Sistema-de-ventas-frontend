@@ -1,5 +1,7 @@
 import {
   CheckCircle2,
+  Eye,
+  EyeOff,
   IdCard,
   LayoutDashboard,
   LockKeyhole,
@@ -44,6 +46,23 @@ function getFeedbackClass(feedback) {
     : styles.feedback;
 }
 
+function PasswordVisibilityButton({ isVisible, onToggle }) {
+  const Icon = isVisible ? EyeOff : Eye;
+  const label = isVisible ? "Ocultar contrasena" : "Mostrar contrasena";
+
+  return (
+    <button
+      aria-label={label}
+      className={styles.passwordToggle}
+      onClick={onToggle}
+      title={label}
+      type="button"
+    >
+      <Icon size={18} aria-hidden="true" />
+    </button>
+  );
+}
+
 function AuthDialog({
   canAccessAdminPanel = false,
   empresaSlug = "",
@@ -67,6 +86,9 @@ function AuthDialog({
   const [feedback, setFeedback] = useState(EMPTY_FEEDBACK);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
+  const [showRegisterConfirmation, setShowRegisterConfirmation] = useState(false);
 
   useEffect(() => {
     if (!isOpen) {
@@ -75,6 +97,9 @@ function AuthDialog({
       setPassword("");
       setRegisterForm(INITIAL_REGISTER_FORM);
       setVerificationCode("");
+      setShowLoginPassword(false);
+      setShowRegisterPassword(false);
+      setShowRegisterConfirmation(false);
     }
   }, [isOpen]);
 
@@ -108,6 +133,9 @@ function AuthDialog({
     setMode("login");
     setFeedback(EMPTY_FEEDBACK);
     setPassword("");
+    setShowLoginPassword(false);
+    setShowRegisterPassword(false);
+    setShowRegisterConfirmation(false);
 
     if (nextEmail) {
       setEmail(nextEmail);
@@ -117,6 +145,9 @@ function AuthDialog({
   function showRegister() {
     setMode("register");
     setFeedback(EMPTY_FEEDBACK);
+    setShowLoginPassword(false);
+    setShowRegisterPassword(false);
+    setShowRegisterConfirmation(false);
     setRegisterForm((current) => ({
       ...current,
       email: current.email || email,
@@ -126,6 +157,9 @@ function AuthDialog({
   function showVerify(nextEmail = "") {
     setMode("verify");
     setFeedback(EMPTY_FEEDBACK);
+    setShowLoginPassword(false);
+    setShowRegisterPassword(false);
+    setShowRegisterConfirmation(false);
     setVerificationEmail(nextEmail || verificationEmail || registerForm.email || email);
   }
 
@@ -247,9 +281,12 @@ function AuthDialog({
     setIsResending(true);
 
     try {
-      await onResendVerification(verificationEmail);
+      const response = await onResendVerification(verificationEmail);
+      if (response?.status !== 200) {
+        throw new Error("No se pudo confirmar el reenvio del codigo.");
+      }
       setFeedback({
-        message: "Codigo reenviado. Revisa tu correo e intentalo nuevamente.",
+        message: "Código reenviado",
         type: "success",
       });
     } catch (error) {
@@ -426,11 +463,15 @@ function AuthDialog({
                   <span className={styles.inputShell}>
                     <LockKeyhole size={18} aria-hidden="true" />
                     <input
-                      type="password"
+                      type={showLoginPassword ? "text" : "password"}
                       value={password}
                       onChange={(event) => setPassword(event.target.value)}
                       autoComplete="current-password"
                       required
+                    />
+                    <PasswordVisibilityButton
+                      isVisible={showLoginPassword}
+                      onToggle={() => setShowLoginPassword((current) => !current)}
                     />
                   </span>
                 </label>
@@ -468,7 +509,10 @@ function AuthDialog({
                       type="text"
                       value={registerForm.nombreCompleto}
                       onChange={(event) =>
-                        updateRegisterField("nombreCompleto", event.target.value)
+                        updateRegisterField(
+                          "nombreCompleto",
+                          event.target.value.replace(/[^\p{L} ]/gu, ""),
+                        )
                       }
                       autoComplete="name"
                       required
@@ -498,12 +542,16 @@ function AuthDialog({
                     <span className={styles.inputShell}>
                       <Phone size={18} aria-hidden="true" />
                       <input
-                        type="tel"
+                        type="text"
                         value={registerForm.telefono}
                         onChange={(event) =>
-                          updateRegisterField("telefono", event.target.value)
+                          updateRegisterField(
+                            "telefono",
+                            event.target.value.replace(/\D/g, ""),
+                          )
                         }
                         autoComplete="tel"
+                        inputMode="numeric"
                         required
                       />
                     </span>
@@ -538,13 +586,17 @@ function AuthDialog({
                     <span className={styles.inputShell}>
                       <LockKeyhole size={18} aria-hidden="true" />
                       <input
-                        type="password"
+                        type={showRegisterPassword ? "text" : "password"}
                         value={registerForm.password}
                         onChange={(event) =>
                           updateRegisterField("password", event.target.value)
                         }
                         autoComplete="new-password"
                         required
+                      />
+                      <PasswordVisibilityButton
+                        isVisible={showRegisterPassword}
+                        onToggle={() => setShowRegisterPassword((current) => !current)}
                       />
                     </span>
                   </label>
@@ -554,7 +606,7 @@ function AuthDialog({
                     <span className={styles.inputShell}>
                       <LockKeyhole size={18} aria-hidden="true" />
                       <input
-                        type="password"
+                        type={showRegisterConfirmation ? "text" : "password"}
                         value={registerForm.passwordConfirmacion}
                         onChange={(event) =>
                           updateRegisterField(
@@ -564,6 +616,12 @@ function AuthDialog({
                         }
                         autoComplete="new-password"
                         required
+                      />
+                      <PasswordVisibilityButton
+                        isVisible={showRegisterConfirmation}
+                        onToggle={() =>
+                          setShowRegisterConfirmation((current) => !current)
+                        }
                       />
                     </span>
                   </label>

@@ -362,10 +362,25 @@ Archivos: `src/pages/AboutPage.jsx` y `src/admin/AboutSettingsPage.jsx`.
 - Logout y limpieza del access token.
 - Un `401` definitivo limpia la sesion y solicita iniciar nuevamente.
 - Deteccion de roles administrativos y acceso directo al panel.
+- El cambio entre tienda y panel administrativo se realiza dentro de la misma
+  aplicacion, sin recargar el documento ni perder el access token en memoria.
+- Al abrir directamente o recargar una URL administrativa, la sesion continua
+  restaurandose mediante la cookie de refresh `HttpOnly`.
 - Registro de comprador desde Mi cuenta.
 - Verificacion de correo con codigo.
 - Reenvio del codigo de verificacion.
 - El registro publico no envia rol; el backend crea cuentas de comprador.
+- El nombre del registro admite solamente letras Unicode y espacios.
+- Telefono e identidad usan entrada de texto con teclado numerico y eliminan
+  cualquier caracter que no sea digito; la identidad se limita a 13 digitos.
+- El codigo se limita a 6 digitos y siempre se envia al API como texto.
+- Login, contrasena y confirmacion disponen de controles Eye/EyeOff de Lucide
+  que no envian el formulario.
+- Crear la cuenta no solicita otro codigo: el primer envio queda a cargo del
+  registro. El mensaje `Código reenviado` aparece solamente cuando el endpoint
+  de reenvio responde con HTTP `200`.
+- Los errores de registro, verificacion y reenvio muestran el mensaje util
+  devuelto por el backend cuando esta disponible.
 
 ### Pendiente en el frontend
 
@@ -462,7 +477,7 @@ Pendientes del checkout:
 - Ruta separada por referencia.
 - Estados: pendiente, aprobado y rechazado.
 - Consulta automatica cada 8 segundos mientras esta pendiente.
-- Actualizacion manual.
+- No muestra una accion manual para actualizar el estado.
 - Reintento de un pago rechazado cuando existe contexto local.
 - Muestra `url_pago` si el backend devuelve una URL HTTP/HTTPS.
 - El pago en linea conserva `POST /api/v1/pagos/iniciar/` sin cambios.
@@ -489,6 +504,8 @@ Entrada principal: `src/admin/AdminApp.jsx`.
 ### 13.1 Acceso y aislamiento
 
 - Login y restauracion con la misma sesion segura.
+- `Ir al panel administrativo` reutiliza la sesion activa de la tienda sin
+  solicitar credenciales nuevamente.
 - Contexto administrativo obtenido del backend.
 - Empresa activa recordada como `ventas_admin_empresa_slug`.
 - Selector de empresa para cuentas con mas de una empresa permitida.
@@ -560,6 +577,9 @@ Comportamiento comun del panel:
 - Confirmacion de eliminacion.
 - Un `409 Conflict` se presenta como registro protegido por historial.
 - Roles disponibles en el formulario de usuario se reducen segun el actor.
+- En pedidos y pagos, `sin_pago` se presenta como `Pagadas en sucursal`; los
+  registros con metodo sucursal que siguen pendientes muestran
+  `Pendiente en sucursal`.
 
 ### 13.4 Pendientes del panel
 
@@ -633,7 +653,7 @@ ventas_cart_v1:<slug_empresa>
 `sessionStorage`:
 
 - pedido creado pendiente de iniciar/reintentar pago;
-- contexto minimo para reintentar un pago rechazado.
+- contexto minimo del pago para reintento, sucursal y prefactura.
 
 No se guarda el access token en almacenamiento persistente. El refresh token
 debe permanecer en una cookie `HttpOnly` del backend.

@@ -1,6 +1,8 @@
 import {
   apiGet,
   apiPost,
+  apiPostWithMeta,
+  hasApiAccessToken,
   refreshApiAccessToken,
   setApiAccessToken,
 } from "./apiClient";
@@ -34,10 +36,10 @@ export async function registrarComprador({
 }) {
   return apiPost("/usuarios/registro-comprador/", {
     empresa_slug: empresaSlug,
-    nombre_completo: nombreCompleto.trim(),
+    nombre_completo: nombreCompleto.replace(/[^\p{L} ]/gu, "").trim(),
     email: email.trim(),
-    telefono: telefono.trim(),
-    numero_identidad: numeroIdentidad.trim(),
+    telefono: telefono.replace(/\D/g, ""),
+    numero_identidad: numeroIdentidad.replace(/\D/g, "").slice(0, 13),
     password,
     password_confirmacion: passwordConfirmacion,
     acepta_terminos: aceptaTerminos === true,
@@ -48,12 +50,12 @@ export async function registrarComprador({
 export async function verificarCorreo(email, codigo) {
   return apiPost("/usuarios/verificar-correo/", {
     email: email.trim(),
-    codigo: codigo.trim(),
+    codigo: String(codigo ?? "").replace(/\D/g, "").slice(0, 6),
   });
 }
 
 export async function reenviarVerificacion(email) {
-  return apiPost("/usuarios/reenviar-verificacion/", {
+  return apiPostWithMeta("/usuarios/reenviar-verificacion/", {
     email: email.trim(),
   });
 }
@@ -65,10 +67,11 @@ export async function getMiPerfil() {
 }
 
 export async function restoreUsuarioSession() {
-  const renewedToken = await refreshApiAccessToken();
-
-  if (!renewedToken) {
-    return null;
+  if (!hasApiAccessToken()) {
+    const renewedToken = await refreshApiAccessToken();
+    if (!renewedToken) {
+      return null;
+    }
   }
 
   try {

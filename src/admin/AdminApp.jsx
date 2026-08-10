@@ -92,6 +92,24 @@ function getRouteKey() {
   return segments[1] || "resumen";
 }
 
+function openStoreWithoutReload(event, companySlug) {
+  if (
+    event.defaultPrevented ||
+    event.button !== 0 ||
+    event.metaKey ||
+    event.ctrlKey ||
+    event.shiftKey ||
+    event.altKey
+  ) {
+    return;
+  }
+
+  event.preventDefault();
+  const nextPath = `/?empresa_slug=${encodeURIComponent(companySlug || "")}`;
+  window.history.pushState({}, "", nextPath);
+  window.dispatchEvent(new PopStateEvent("popstate"));
+}
+
 function loginErrorMessage(error) {
   const payload = error?.payload;
   if (payload?.detail) return payload.detail;
@@ -193,7 +211,12 @@ function AdminShell({ context, currentPage, onCompanyChange, onLogout, onNavigat
         </nav>
 
         <footer className={styles.sidebarFooter}>
-          <a href={`/?empresa_slug=${encodeURIComponent(company?.slug || "")}`}><ExternalLink size={16} /> Abrir tienda publica</a>
+          <a
+            href={`/?empresa_slug=${encodeURIComponent(company?.slug || "")}`}
+            onClick={(event) => openStoreWithoutReload(event, company?.slug)}
+          >
+            <ExternalLink size={16} /> Abrir tienda publica
+          </a>
         </footer>
       </aside>
 
