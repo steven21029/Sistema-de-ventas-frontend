@@ -31,6 +31,16 @@ quedan identificados con `metodo="en_linea"`.
 
 ## Iniciar pago en sucursal
 
+El selector debe cargarse desde el listado publico de sucursales activas:
+
+```http
+GET /api/v1/empresas/sucursales/?empresa_slug=Analiza
+```
+
+Cada elemento incluye `id`, `nombre`, direccion y demas datos publicos. El
+valor de `id` seleccionado se envia como `sucursal_id`; nunca debe enviarse
+`null`.
+
 ```http
 POST /api/v1/pedidos/pedidos/123/pago-en-sucursal/
 Content-Type: application/json
@@ -98,9 +108,26 @@ Content-Type: application/pdf
 Content-Disposition: attachment; filename="prefactura-PED-001.pdf"
 ```
 
-El PDF contiene la leyenda `PREFACTURA - NO ES COMPROBANTE FISCAL`, empresa,
-sucursal, comprador, pedido, productos o servicios, cantidades, precios,
-subtotal, descuentos, impuestos, envio, total, estado y vencimiento.
+El PDF se genera en formato A4 vertical y contiene la leyenda
+`PREFACTURA - NO ES COMPROBANTE FISCAL`. La identidad visual se obtiene de la
+empresa asociada al pedido: logo, nombre, colores, telefono, correo, direccion
+y sitio web. Ningun dato de marca esta fijado para una empresa particular.
+
+El documento incluye:
+
+- Marca de agua repetida con el nombre de la empresa.
+- Numeros de prefactura y pedido, fecha y hora, estado, vencimiento, metodo de
+  pago y sucursal seleccionada.
+- Nombre, identidad cuando exista, telefono y correo del comprador.
+- Codigo, articulo, cantidad, precio unitario, descuento y subtotal por linea.
+- Subtotal, descuentos, impuesto, envio y total oficiales del pedido.
+- Codigo QR que identifica la prefactura y el pedido.
+- Contacto de la empresa y numero de pagina en el pie.
+- Encabezados de tabla repetidos y filas indivisibles cuando hay varias paginas.
+
+El correo y la descarga usan el mismo generador determinista. Para una misma
+prefactura y datos de pedido, el archivo adjunto es exactamente igual al que
+devuelve este endpoint.
 
 ## Reenviar prefactura
 
@@ -154,6 +181,69 @@ devuelve `200 OK`, `duplicado=true` y no repite el movimiento de inventario.
 Si falta inventario, responde `400` y la transaccion conserva pago y pedido
 como pendientes.
 
+## Cancelar un pedido pendiente
+
+```http
+POST /api/v1/pedidos/pedidos/123/cancelar-pendiente/
+Content-Type: application/json
+
+{
+  "motivo": "Pedido abandonado por el cliente"
+}
+```
+
+Solo puede usarlo un superusuario, administrador maestro autorizado,
+administrador de empresa o gerente de la empresa del pedido. El pedido debe
+seguir con `estado_pago=pendiente` y no puede tener pagos aprobados.
+
+Respuesta `200 OK`:
+
+```json
+{
+  "pedido": {
+    "id": 123,
+    "estado_pago": "cancelado",
+    "metodo_pago": "sucursal",
+    "motivo_cancelacion": "Pedido abandonado por el cliente",
+    "cancelado_por": 8,
+    "cancelado_por_email": "admin@example.com",
+    "fecha_cancelacion": "2026-08-10T14:30:00-06:00",
+    "inventario_descontado": false
+  },
+  "pagos_cancelados": [
+    {
+      "referencia": "550e8400-e29b-41d4-a716-446655440000",
+      "pedido": 123,
+      "metodo": "sucursal",
+      "estado": "cancelado",
+      "monto": "123.50"
+    }
+  ],
+  "duplicado": false
+}
+```
+
+La operacion bloquea pedido e intentos dentro de una transaccion. Solo cambia
+intentos que todavia esten `pendiente`; conserva rechazados como historial y
+no crea movimientos de inventario. Repetirla devuelve `duplicado=true`, el
+mismo motivo y la misma auditoria. Un pedido pagado o con pago aprobado recibe
+`400`, un comprador recibe `403` y un administrador de otra empresa recibe
+`403`.
+
+Esta accion no reemplaza la confirmacion presencial. La unica ruta que puede
+aprobar administrativamente un pago en sucursal sigue siendo:
+
+```http
+POST /api/v1/pagos/{referencia}/confirmar-en-sucursal/
+```
+
+Los listados administrativos exponen los campos necesarios:
+
+- `GET /api/v1/pedidos/pedidos/` incluye `metodo_pago`, motivo, administrador y
+  fecha de cancelacion.
+- `GET /api/v1/pagos/` incluye `metodo`, `estado`, `referencia`, `pedido` y
+  `monto`.
+
 ## Variables de entorno
 
 ```env
@@ -162,7 +252,7 @@ PREFACTURA_MAX_INTENTOS_CORREO=4
 ```
 
 `PREFACTURA_MAX_INTENTOS_CORREO` cuenta el envio inicial y los reenvios. El
-correo utiliza la configuracion SMTP existente de Brevo.
+correo y el PDF adjunto se envian mediante la API HTTPS de Brevo.
 
 ## Integracion del frontend
 
@@ -171,4 +261,6 @@ correo utiliza la configuracion SMTP existente de Brevo.
 - No enviar correos ni direcciones alternativas desde el navegador.
 - Tratar respuestas `200` y `201` del inicio como exito.
 - Tras la confirmacion administrativa, refrescar el pedido y el inventario.
+- Tras cancelar un pendiente, retirar el pedido de acciones confirmables y
+  refrescar los agregados del resumen comercial.
 - Mantener el flujo actual de `/pagos/iniciar/` para pago en linea.

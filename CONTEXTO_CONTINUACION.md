@@ -541,6 +541,11 @@ Entrada principal: `src/admin/AdminApp.jsx`.
   para calcular los totales.
 - El dashboard solicita un resumen del mes actual con comparacion y otro resumen
   agrupado por mes para la serie de los ultimos seis meses.
+- La serie grafica se consume directamente desde `serie`; React solo convierte
+  sus montos para calcular la altura visual de las barras, no para recalcular
+  totales comerciales.
+- Los montos oficiales del resumen, metodos, pendientes y productos se conservan
+  como cadenas decimales al presentarlos.
 - Solo la seccion Pedidos recientes conserva una consulta paginada de cinco
   registros a `GET /api/v1/pedidos/pedidos/`.
 - El centro de reportes pide una fecha inicial y un periodo `semanal` de 7 dias,
@@ -548,8 +553,13 @@ Entrada principal: `src/admin/AdminApp.jsx`.
   calcula la fecha final sin pedirla al usuario.
 - No se puede descargar un periodo que incluya fechas posteriores al dia actual;
   la fecha inicial maxima cambia automaticamente segun el periodo elegido.
-- El usuario tambien elige contenido `resumen`, `ventas`, `pagos` o `impuestos`,
-  y formato `PDF`, `XLSX` o `CSV`.
+- El usuario tambien elige contenido `resumen`, `ventas`, `pagos`, `impuestos`,
+  `sucursales` o `familias`, y formato `PDF` o `XLSX`.
+- Ciudad, sucursal, examen y familia son filtros combinables. Se aplican tanto
+  a los dos resumenes del dashboard como al archivo descargado y los IDs vacios
+  no se envian.
+- Las opciones se cargan desde sucursales publicas, examenes y familias. Si una
+  fuente falla, las demas permanecen disponibles.
 - Las descargas usan `GET /api/v1/reportes/ventas/exportar/`, conservan la
   autenticacion JWT y respetan el nombre indicado por `Content-Disposition`.
 - Conteo de catalogo activo, usuarios y mensajes nuevos.
@@ -616,8 +626,8 @@ Comportamiento comun del panel:
   filtrar por estado desde la interfaz.
 - Probar resumen y exportaciones con datos reales, periodos grandes, todos los
   formatos y cada rol administrativo autorizado.
-- Ampliar reportes a inventario o usuarios si entran en el alcance; la primera
-  version cubre resumen, ventas, pagos e impuestos.
+- Ampliar reportes a inventario o usuarios si entran en el alcance; la version
+  actual cubre resumen, ventas, pagos, impuestos, sucursales y familias.
 - Definir devoluciones y cierres contables si deben formar parte de reportes
   posteriores.
 - Incorporar historial detallado de movimientos de inventario.

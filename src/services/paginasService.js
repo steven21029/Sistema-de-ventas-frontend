@@ -52,6 +52,15 @@ export async function getExamenes(empresaSlug, filters = {}) {
   return asArray(payload);
 }
 
+export async function getFamilias(empresaSlug, filters = {}) {
+  const payload = await apiGet("/catalogo/familias/", {
+    empresa_slug: empresaSlug,
+    buscar: filters.buscar,
+  });
+
+  return sortByOrder(payload);
+}
+
 export async function getPerfiles(empresaSlug, filters = {}) {
   const payload = await apiGet("/catalogo/perfiles/", {
     empresa_slug: empresaSlug,

@@ -1480,6 +1480,65 @@
   cursor: wait;
 }
 
+.reportSegments {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--admin-line);
+}
+
+.reportSegments > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.reportSegments > header > span,
+.reportSegments > header > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.reportSegments > header > span {
+  color: var(--admin-ink);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.reportSegments > header > button {
+  padding: 0;
+  background: transparent;
+  color: var(--admin-brand);
+  border: 0;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.reportSegmentGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.reportSegmentStatus,
+.reportSegmentError {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--admin-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.reportSegmentError {
+  color: var(--admin-danger);
+}
+
 .reportPeriod {
   grid-column: 1 / -1;
   margin: 0;
@@ -2678,6 +2737,10 @@
 
   .reportToolbar form {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .reportSegmentGrid {
+    grid-template-columns: 1fr;
   }
 
   .reportDownloadButton {

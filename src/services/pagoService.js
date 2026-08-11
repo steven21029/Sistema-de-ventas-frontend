@@ -19,10 +19,15 @@ export function getPago(referencia) {
 }
 
 export function iniciarPagoEnSucursal(pedidoId, sucursalId) {
+  const normalizedBranchId = Number(sucursalId);
+  if (!Number.isInteger(normalizedBranchId) || normalizedBranchId <= 0) {
+    throw new Error("Selecciona una sucursal valida para generar la prefactura.");
+  }
+
   return apiPost(
     `/pedidos/pedidos/${encodeURIComponent(pedidoId)}/pago-en-sucursal/`,
     {
-      sucursal_id: Number(sucursalId),
+      sucursal_id: normalizedBranchId,
     },
     {
       auth: true,

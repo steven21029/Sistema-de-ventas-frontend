@@ -11,7 +11,9 @@ import {
   LoaderCircle,
   Mail,
   PackageCheck,
+  RotateCcw,
   ShoppingBag,
+  SlidersHorizontal,
   Users,
   WalletCards,
 } from "lucide-react";
@@ -21,6 +23,7 @@ import {
   getSalesSummary,
   listAdminResource,
 } from "../services/adminService";
+import { getExamenes, getFamilias, getSucursales } from "../services/paginasService";
 import { getAdminPaymentMethod } from "../utils/paymentStatus";
 import { getApiErrorMessage } from "../utils/apiError";
 import { asArray } from "../services/apiClient";
@@ -68,12 +71,13 @@ const REPORT_TYPES = [
   { value: "ventas", label: "Ventas" },
   { value: "pagos", label: "Pagos" },
   { value: "impuestos", label: "Impuestos" },
+  { value: "sucursales", label: "Sucursales" },
+  { value: "familias", label: "Familias" },
 ];
 
 const REPORT_FORMATS = [
   { value: "pdf", label: "PDF" },
   { value: "xlsx", label: "Excel (XLSX)" },
-  { value: "csv", label: "CSV" },
 ];
 
 const REPORT_PERIODS = [
@@ -81,6 +85,32 @@ const REPORT_PERIODS = [
   { value: "quincenal", label: "Quincenal" },
   { value: "mensual", label: "Mensual" },
 ];
+
+const EMPTY_SEGMENT_FILTERS = {
+  ciudad: "",
+  sucursal_id: "",
+  examen_id: "",
+  familia_id: "",
+};
+
+function buildSegmentParams(filters) {
+  const params = {};
+  const city = String(filters.ciudad || "").trim();
+  if (city) params.ciudad = city;
+
+  ["sucursal_id", "examen_id", "familia_id"].forEach((key) => {
+    const value = String(filters[key] || "").trim();
+    if (value) params[key] = value;
+  });
+
+  return params;
+}
+
+function sortByName(items) {
+  return [...items].sort((first, second) =>
+    String(first?.nombre || "").localeCompare(String(second?.nombre || ""), "es"),
+  );
+}
 
 function countFrom(payload) {
   if (Number.isFinite(Number(payload?.count))) return Number(payload.count);
@@ -171,6 +201,16 @@ function numberFrom(source, ...keys) {
   return 0;
 }
 
+function decimalFrom(source, ...keys) {
+  for (const key of keys) {
+    const value = source?.[key];
+    if (value !== null && value !== undefined && value !== "") {
+      return String(value);
+    }
+  }
+  return "0.00";
+}
+
 function formatDecimalMoney(value) {
   const match = String(value ?? "0.00").trim().match(/^(-?)(\d+)(?:\.(\d+))?$/);
   if (!match) return "L 0.00";
@@ -243,7 +283,14 @@ function normalizeMonthSeries(payload, monthCount = 6) {
       key,
       label:
         entry.etiqueta || entry.label || monthFormatter.format(date).replace(".", ""),
-      revenue: numberFrom(
+      revenue: decimalFrom(
+        entry,
+        "ingresos_confirmados",
+        "ingresos",
+        "monto_confirmado",
+        "total",
+      ),
+      revenueValue: numberFrom(
         entry,
         "ingresos_confirmados",
         "ingresos",
@@ -325,7 +372,7 @@ function normalizeTopProducts(payload) {
         "unidades_vendidas",
         "total_vendido",
       ),
-      revenue: numberFrom(
+      revenue: decimalFrom(
         product,
         "ingresos",
         "ingresos_confirmados",
@@ -333,7 +380,7 @@ function normalizeTopProducts(payload) {
         "total",
       ),
     }))
-    .slice(0, 5);
+    .slice(0, 10);
 }
 
 function normalizePaymentMethods(payload, summary) {
@@ -342,7 +389,7 @@ function normalizePaymentMethods(payload, summary) {
   function getMethod(method) {
     const entry = methods?.[method] || {};
     return {
-      amount: numberFrom(entry, "monto", "monto_total", "total"),
+      amount: decimalFrom(entry, "monto", "monto_total", "total"),
       count: numberFrom(entry, "cantidad", "pagos", "total_pagos"),
     };
   }
@@ -388,21 +435,17 @@ function buildSalesAnalytics(currentPayload, rangePayload) {
   const paymentMethods = normalizePaymentMethods(currentPayload, current);
   const pendingMethods = normalizePendingMethods(currentPayload, current);
   const statusBreakdown = buildStatusBreakdown(currentPayload, current, pendingMethods);
-  const rangeRevenueFromSeries = monthSeries.reduce(
-    (total, entry) => total + entry.revenue,
-    0,
-  );
   const rangeSalesFromSeries = monthSeries.reduce(
     (total, entry) => total + entry.sales,
     0,
   );
 
   return {
-    averageTicket: numberFrom(current, "ticket_promedio"),
+    averageTicket: decimalFrom(current, "ticket_promedio"),
     monthSeries,
     paymentMethods,
     pendingMethods,
-    revenue: numberFrom(current, "ingresos_confirmados"),
+    revenue: decimalFrom(current, "ingresos_confirmados"),
     revenueChange: getTrend(currentPayload, "revenue"),
     sales: numberFrom(current, "ventas_confirmadas"),
     salesChange: getTrend(currentPayload, "sales"),
@@ -411,13 +454,12 @@ function buildSalesAnalytics(currentPayload, rangePayload) {
       (total, entry) => total + entry.count,
       0,
     ),
-    rangeRevenue:
-      numberFrom(range, "ingresos_confirmados") || rangeRevenueFromSeries,
+    rangeRevenue: decimalFrom(range, "ingresos_confirmados"),
     rangeSales: numberFrom(range, "ventas_confirmadas") || rangeSalesFromSeries,
-    subtotal: numberFrom(range, "subtotal"),
-    discounts: numberFrom(range, "descuentos"),
-    taxes: numberFrom(range, "impuestos"),
-    shipping: numberFrom(range, "envios"),
+    subtotal: decimalFrom(range, "subtotal"),
+    discounts: decimalFrom(range, "descuentos"),
+    taxes: decimalFrom(range, "impuestos"),
+    shipping: decimalFrom(range, "envios"),
     topProducts: normalizeTopProducts(rangePayload),
   };
 }
@@ -441,6 +483,16 @@ function saveFile(blob, filename) {
 export default function AdminDashboard({ context, empresaSlug, onNavigate }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [summaryLoading, setSummaryLoading] = useState(true);
+  const [summaryError, setSummaryError] = useState("");
+  const [filterOptions, setFilterOptions] = useState({
+    branches: [],
+    exams: [],
+    families: [],
+  });
+  const [filtersLoading, setFiltersLoading] = useState(true);
+  const [filtersError, setFiltersError] = useState("");
+  const [segmentFilters, setSegmentFilters] = useState(EMPTY_SEGMENT_FILTERS);
   const [reportFilters, setReportFilters] = useState(() => ({
     fecha_desde: formatDateParam(getPreviousMonthStart()),
     periodo: "mensual",
@@ -457,10 +509,7 @@ export default function AdminDashboard({ context, empresaSlug, onNavigate }) {
     let active = true;
     setLoading(true);
 
-    async function loadDashboard() {
-      const now = new Date();
-      const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      const rangeStart = getMonthRangeStart(6);
+    async function loadDashboardBase() {
       const requests = [
         listAdminResource("/catalogo/productos/", empresaSlug, {
           paginar: true,
@@ -472,18 +521,6 @@ export default function AdminDashboard({ context, empresaSlug, onNavigate }) {
           page: 1,
           tamano_pagina: 1,
           activo: true,
-        }),
-        getSalesSummary(empresaSlug, {
-          fecha_desde: formatDateParam(currentMonthStart),
-          fecha_hasta: formatDateParam(now),
-          agrupacion: "dia",
-          comparar_periodo_anterior: true,
-        }),
-        getSalesSummary(empresaSlug, {
-          fecha_desde: formatDateParam(rangeStart),
-          fecha_hasta: formatDateParam(now),
-          agrupacion: "mes",
-          comparar_periodo_anterior: false,
         }),
         listAdminResource("/pedidos/pedidos/", empresaSlug, {
           paginar: true,
@@ -503,32 +540,138 @@ export default function AdminDashboard({ context, empresaSlug, onNavigate }) {
           : Promise.resolve(null),
       ];
 
-      const [products, users, currentSummary, rangeSummary, orders, contacts, inventory] =
+      const [products, users, orders, contacts, inventory] =
         await Promise.allSettled(requests);
       if (!active) return;
 
-      setData({
+      setData((current) => ({
+        ...current,
         products: products.status === "fulfilled" ? products.value : null,
         users: users.status === "fulfilled" ? users.value : null,
-        currentSummary:
-          currentSummary.status === "fulfilled" ? currentSummary.value : null,
-        rangeSummary: rangeSummary.status === "fulfilled" ? rangeSummary.value : null,
         orders: orders.status === "fulfilled" ? orders.value : null,
         contacts: contacts.status === "fulfilled" ? contacts.value : null,
         inventory: inventory.status === "fulfilled" ? inventory.value : null,
-      });
+      }));
       setLoading(false);
     }
 
-    loadDashboard();
+    loadDashboardBase();
     return () => {
       active = false;
     };
   }, [company.permite_productos_fisicos, empresaSlug]);
 
+  useEffect(() => {
+    let active = true;
+    setSummaryLoading(true);
+    setSummaryError("");
+
+    async function loadSummaries() {
+      const now = new Date();
+      const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const rangeStart = getMonthRangeStart(6);
+      const segmentParams = buildSegmentParams(segmentFilters);
+
+      try {
+        const [currentSummary, rangeSummary] = await Promise.all([
+          getSalesSummary(empresaSlug, {
+            fecha_desde: formatDateParam(currentMonthStart),
+            fecha_hasta: formatDateParam(now),
+            agrupacion: "dia",
+            comparar_periodo_anterior: true,
+            ...segmentParams,
+          }),
+          getSalesSummary(empresaSlug, {
+            fecha_desde: formatDateParam(rangeStart),
+            fecha_hasta: formatDateParam(now),
+            agrupacion: "mes",
+            comparar_periodo_anterior: false,
+            ...segmentParams,
+          }),
+        ]);
+        if (!active) return;
+        setData((current) => ({ ...current, currentSummary, rangeSummary }));
+      } catch (error) {
+        if (!active) return;
+        const fallback = error?.status === 403
+          ? "No tienes permiso para consultar reportes de esta empresa."
+          : error?.status === 400
+            ? "Los filtros seleccionados no son validos para esta empresa."
+            : "No se pudo actualizar el resumen comercial.";
+        setSummaryError(getErrorMessage(error, fallback));
+      } finally {
+        if (active) setSummaryLoading(false);
+      }
+    }
+
+    loadSummaries();
+    return () => {
+      active = false;
+    };
+  }, [empresaSlug, segmentFilters.ciudad, segmentFilters.sucursal_id, segmentFilters.examen_id, segmentFilters.familia_id]);
+
+  useEffect(() => {
+    let active = true;
+    setFiltersLoading(true);
+    setFiltersError("");
+    setSegmentFilters(EMPTY_SEGMENT_FILTERS);
+
+    Promise.allSettled([
+      getSucursales(empresaSlug),
+      getExamenes(empresaSlug),
+      getFamilias(empresaSlug),
+    ])
+      .then(([branches, exams, families]) => {
+        if (!active) return;
+        setFilterOptions({
+          branches: branches.status === "fulfilled" ? sortByName(branches.value) : [],
+          exams: exams.status === "fulfilled" ? sortByName(exams.value) : [],
+          families: families.status === "fulfilled" ? sortByName(families.value) : [],
+        });
+        const failedSources = [
+          branches.status === "rejected" ? "sucursales y ciudades" : "",
+          exams.status === "rejected" ? "examenes" : "",
+          families.status === "rejected" ? "familias" : "",
+        ].filter(Boolean);
+        if (failedSources.length > 0) {
+          setFiltersError(`No se pudieron cargar: ${failedSources.join(", ")}.`);
+        }
+      })
+      .finally(() => {
+        if (active) setFiltersLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [empresaSlug]);
+
   function updateReportFilter(event) {
     const { name, value } = event.target;
     setReportFilters((current) => ({ ...current, [name]: value }));
+    setDownloadState({ status: "idle", message: "" });
+  }
+
+  function updateSegmentFilter(event) {
+    const { name, value } = event.target;
+    setSegmentFilters((current) => {
+      if (name !== "ciudad") return { ...current, [name]: value };
+
+      const selectedBranch = filterOptions.branches.find(
+        (branch) => String(branch.id) === String(current.sucursal_id),
+      );
+      const branchStillMatches = !value || selectedBranch?.ciudad === value;
+      return {
+        ...current,
+        ciudad: value,
+        sucursal_id: branchStillMatches ? current.sucursal_id : "",
+      };
+    });
+    setDownloadState({ status: "idle", message: "" });
+  }
+
+  function resetSegmentFilters() {
+    setSegmentFilters(EMPTY_SEGMENT_FILTERS);
     setDownloadState({ status: "idle", message: "" });
   }
 
@@ -562,6 +705,7 @@ export default function AdminDashboard({ context, empresaSlug, onNavigate }) {
         fecha_hasta: formatDateParam(endDate),
         tipo: reportFilters.tipo,
         formato: reportFilters.formato,
+        ...buildSegmentParams(segmentFilters),
       });
       if (!(result.blob instanceof Blob) || result.blob.size === 0) {
         throw new Error("El servidor devolvio un archivo vacio.");
@@ -579,7 +723,7 @@ export default function AdminDashboard({ context, empresaSlug, onNavigate }) {
     }
   }
 
-  if (loading) {
+  if (loading || (summaryLoading && !data?.currentSummary)) {
     return (
       <div className={styles.fullPageLoading}>
         <LoaderCircle className={styles.spin} size={25} />
@@ -600,8 +744,17 @@ export default function AdminDashboard({ context, empresaSlug, onNavigate }) {
   const analytics = buildSalesAnalytics(data?.currentSummary, data?.rangeSummary);
   const maxMonthlyRevenue = Math.max(
     0,
-    ...analytics.monthSeries.map((entry) => entry.revenue),
+    ...analytics.monthSeries.map((entry) => entry.revenueValue),
   );
+  const cities = [...new Set(
+    filterOptions.branches
+      .map((branch) => String(branch?.ciudad || "").trim())
+      .filter(Boolean),
+  )].sort((first, second) => first.localeCompare(second, "es"));
+  const visibleBranches = segmentFilters.ciudad
+    ? filterOptions.branches.filter((branch) => branch.ciudad === segmentFilters.ciudad)
+    : filterOptions.branches;
+  const hasSegmentFilters = Object.values(segmentFilters).some(Boolean);
   const downloading = downloadState.status === "loading";
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -633,7 +786,7 @@ export default function AdminDashboard({ context, empresaSlug, onNavigate }) {
           <FileSpreadsheet size={22} />
           <span>
             <small>Reportes</small>
-            <h2 id="report-title">Exportar informacion contable</h2>
+            <h2 id="report-title">Exportar reportes comerciales</h2>
           </span>
         </div>
         <form onSubmit={handleReportDownload}>
@@ -696,6 +849,55 @@ export default function AdminDashboard({ context, empresaSlug, onNavigate }) {
             {downloading ? "Preparando" : "Descargar"}
           </button>
         </form>
+        <section className={styles.reportSegments} aria-busy={filtersLoading || summaryLoading}>
+          <header>
+            <span><SlidersHorizontal size={16} /> Segmentacion</span>
+            {hasSegmentFilters ? (
+              <button onClick={resetSegmentFilters} title="Limpiar filtros" type="button">
+                <RotateCcw size={15} /> Limpiar
+              </button>
+            ) : null}
+          </header>
+          <div className={styles.reportSegmentGrid}>
+            <label>
+              <span>Ciudad</span>
+              <select disabled={filtersLoading || filterOptions.branches.length === 0} name="ciudad" onChange={updateSegmentFilter} value={segmentFilters.ciudad}>
+                <option value="">Todas las ciudades</option>
+                {cities.map((city) => <option key={city} value={city}>{city}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>Sucursal</span>
+              <select disabled={filtersLoading || filterOptions.branches.length === 0} name="sucursal_id" onChange={updateSegmentFilter} value={segmentFilters.sucursal_id}>
+                <option value="">Todas las sucursales</option>
+                {visibleBranches.map((branch) => (
+                  <option key={branch.id} value={branch.id}>{branch.nombre}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>Examen</span>
+              <select disabled={filtersLoading || filterOptions.exams.length === 0} name="examen_id" onChange={updateSegmentFilter} value={segmentFilters.examen_id}>
+                <option value="">Todos los examenes</option>
+                {filterOptions.exams.map((exam) => (
+                  <option key={exam.id} value={exam.id}>{exam.nombre}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>Familia</span>
+              <select disabled={filtersLoading || filterOptions.families.length === 0} name="familia_id" onChange={updateSegmentFilter} value={segmentFilters.familia_id}>
+                <option value="">Todas las familias</option>
+                {filterOptions.families.map((family) => (
+                  <option key={family.id} value={family.id}>{family.nombre}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          {filtersLoading || summaryLoading ? <p className={styles.reportSegmentStatus}><LoaderCircle className={styles.spin} size={14} /> Actualizando resumen</p> : null}
+          {filtersError ? <p className={styles.reportSegmentError} role="alert">{filtersError}</p> : null}
+          {summaryError ? <p className={styles.reportSegmentError} role="alert">{summaryError}</p> : null}
+        </section>
         <p
           className={`${styles.reportPeriod} ${reportIncludesFuture ? styles.reportPeriodInvalid : ""}`}
           id="report-period-status"
@@ -720,7 +922,7 @@ export default function AdminDashboard({ context, empresaSlug, onNavigate }) {
           <span className={styles.metricIcon}><CreditCard size={20} /></span>
           <span className={styles.metricCopy}>
             <small>Ingresos este mes</small>
-            <strong>{money.format(analytics.revenue)}</strong>
+            <strong>{formatDecimalMoney(analytics.revenue)}</strong>
             <em className={styles[`trend_${analytics.revenueChange.direction}`]}>
               {analytics.revenueChange.label}
             </em>
@@ -740,7 +942,7 @@ export default function AdminDashboard({ context, empresaSlug, onNavigate }) {
           <span className={styles.metricIcon}><PackageCheck size={20} /></span>
           <span className={styles.metricCopy}>
             <small>Ticket promedio</small>
-            <strong>{money.format(analytics.averageTicket)}</strong>
+            <strong>{formatDecimalMoney(analytics.averageTicket)}</strong>
             <em>Por venta confirmada</em>
           </span>
         </article>
@@ -750,7 +952,7 @@ export default function AdminDashboard({ context, empresaSlug, onNavigate }) {
           </span>
           <span className={styles.metricCopy}>
             <small>Pagos en sucursal</small>
-            <strong>{money.format(analytics.paymentMethods.branch.amount)}</strong>
+            <strong>{formatDecimalMoney(analytics.paymentMethods.branch.amount)}</strong>
             <em>{formatApprovedPaymentCount(analytics.paymentMethods.branch.count)}</em>
           </span>
         </article>
@@ -760,7 +962,7 @@ export default function AdminDashboard({ context, empresaSlug, onNavigate }) {
           </span>
           <span className={styles.metricCopy}>
             <small>Pagos en linea</small>
-            <strong>{money.format(analytics.paymentMethods.online.amount)}</strong>
+            <strong>{formatDecimalMoney(analytics.paymentMethods.online.amount)}</strong>
             <em>{formatApprovedPaymentCount(analytics.paymentMethods.online.count)}</em>
           </span>
         </article>
@@ -780,29 +982,29 @@ export default function AdminDashboard({ context, empresaSlug, onNavigate }) {
               <span>Ventas confirmadas</span>
               <h2>Ingresos de los ultimos 6 meses</h2>
             </div>
-            <strong>{money.format(analytics.rangeRevenue)}</strong>
+            <strong>{formatDecimalMoney(analytics.rangeRevenue)}</strong>
           </header>
           <div
             className={styles.salesChart}
             role="img"
-            aria-label={`Ingresos confirmados de los ultimos seis meses: ${money.format(analytics.rangeRevenue)}`}
+            aria-label={`Ingresos confirmados de los ultimos seis meses: ${formatDecimalMoney(analytics.rangeRevenue)}`}
           >
             {analytics.monthSeries.map((entry) => {
               const barHeight =
-                entry.revenue > 0 && maxMonthlyRevenue > 0
-                  ? `${Math.max(7, (entry.revenue / maxMonthlyRevenue) * 100)}%`
+                entry.revenueValue > 0 && maxMonthlyRevenue > 0
+                  ? `${Math.max(7, (entry.revenueValue / maxMonthlyRevenue) * 100)}%`
                   : "3px";
 
               return (
                 <div className={styles.chartColumn} key={entry.key}>
                   <span className={styles.chartValue}>
-                    {compactMoney.format(entry.revenue)}
+                    {compactMoney.format(entry.revenueValue)}
                   </span>
                   <div className={styles.chartTrack}>
                     <i
                       className={entry.key === monthKey(new Date()) ? styles.currentBar : ""}
                       style={{ height: barHeight }}
-                      title={`${entry.label}: ${money.format(entry.revenue)}`}
+                      title={`${entry.label}: ${formatDecimalMoney(entry.revenue)}`}
                     />
                   </div>
                   <strong>{entry.label}</strong>
@@ -811,10 +1013,10 @@ export default function AdminDashboard({ context, empresaSlug, onNavigate }) {
             })}
           </div>
           <div className={styles.accountingBreakdown}>
-            <span><small>Subtotal</small><strong>{money.format(analytics.subtotal)}</strong></span>
-            <span><small>Descuentos</small><strong>{money.format(analytics.discounts)}</strong></span>
-            <span><small>Impuestos</small><strong>{money.format(analytics.taxes)}</strong></span>
-            <span><small>Envios</small><strong>{money.format(analytics.shipping)}</strong></span>
+            <span><small>Subtotal</small><strong>{formatDecimalMoney(analytics.subtotal)}</strong></span>
+            <span><small>Descuentos</small><strong>{formatDecimalMoney(analytics.discounts)}</strong></span>
+            <span><small>Impuestos</small><strong>{formatDecimalMoney(analytics.taxes)}</strong></span>
+            <span><small>Envios</small><strong>{formatDecimalMoney(analytics.shipping)}</strong></span>
           </div>
           <footer className={styles.analyticsFooter}>
             <span>{analytics.rangeSales} ventas confirmadas en el periodo</span>
@@ -923,7 +1125,7 @@ export default function AdminDashboard({ context, empresaSlug, onNavigate }) {
               {analytics.topProducts.map((product) => (
                 <button key={product.id} onClick={() => onNavigate("productos")} type="button">
                   <span><strong>{product.name}</strong><small>{product.units} unidades</small></span>
-                  <span><strong>{money.format(product.revenue)}</strong><small>ingresos</small></span>
+                  <span><strong>{formatDecimalMoney(product.revenue)}</strong><small>ingresos</small></span>
                 </button>
               ))}
             </div>

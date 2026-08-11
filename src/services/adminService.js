@@ -165,6 +165,12 @@ export function getSalesSummary(empresaSlug, filters = {}) {
 export async function downloadSalesReport(empresaSlug, filters) {
   const format = String(filters.formato || "pdf").toLowerCase();
   const type = String(filters.tipo || "resumen").toLowerCase();
+  if (!["pdf", "xlsx"].includes(format)) {
+    throw new Error("El formato de reporte seleccionado no esta disponible.");
+  }
+  if (!["resumen", "ventas", "pagos", "impuestos", "sucursales", "familias"].includes(type)) {
+    throw new Error("El contenido de reporte seleccionado no esta disponible.");
+  }
   const result = await apiDownload(
     "/reportes/ventas/exportar/",
     {
@@ -180,7 +186,7 @@ export async function downloadSalesReport(empresaSlug, filters) {
     ...result,
     filename:
       result.filename ||
-      `reporte-${type}-${filters.fecha_desde}-${filters.fecha_hasta}.${format}`,
+      `reporte_${type}_${filters.fecha_desde}_${filters.fecha_hasta}.${format}`,
   };
 }
 

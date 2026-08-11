@@ -1779,3 +1779,36 @@ Verificacion:
 - Chrome headless: dashboard, cancelacion con motivo, auditoria, filtros y
   confirmacion de cobro en sucursal comprobados con respuestas simuladas.
 - Vista administrativa comprobada a 320 px sin desbordamiento horizontal.
+
+## 2026-08-11 - Retiro de reportes CSV
+
+Estado: implementado en frontend.
+
+- Se retiro `CSV` del selector de formatos del centro de reportes.
+- Los formatos visibles y solicitables desde el panel quedan limitados a `PDF`
+  y `XLSX`, de acuerdo con el contrato actual del backend.
+
+## 2026-08-11 - Reportes comerciales segmentados
+
+Estado: implementado y verificado en frontend con el contrato oficial.
+
+- Se agregaron los contenidos `Sucursales` y `Familias` a los cuatro reportes
+  existentes.
+- El panel carga y combina filtros por ciudad, sucursal, examen y familia.
+- Los filtros se aplican al resumen del mes, la serie de seis meses y la
+  descarga PDF o XLSX, sin enviar IDs vacios.
+- Una fuente de opciones puede fallar sin bloquear los demas filtros.
+- La grafica consume `serie` y los totales monetarios oficiales se presentan
+  desde sus cadenas decimales sin recalcularlos en React.
+- El servicio rechaza formatos o contenidos no admitidos y respeta el nombre
+  recibido por `Content-Disposition`.
+
+Verificacion:
+
+- `npm run build`: correcto; Vite transformo 1642 modulos.
+- Chrome headless: seis contenidos, formatos PDF/XLSX, filtro aplicado al
+  resumen y a la descarga, y ancho de 320 px sin desbordamiento.
+- Endpoints publicos locales: 371 examenes y 2 familias disponibles.
+- Sucursales requiere aplicar la migracion local que agrega
+  `empresas_sucursalempresa.ciudad`; el frontend mantiene disponibles los otros
+  filtros mientras esa fuente responde con error.
