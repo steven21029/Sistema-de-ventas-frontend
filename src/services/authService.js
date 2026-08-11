@@ -7,12 +7,13 @@ import {
   setApiAccessToken,
 } from "./apiClient";
 
-export async function loginUsuario(email, password) {
+export async function loginUsuario(email, password, recordarme = false) {
   const payload = await apiPost(
     "/usuarios/login/",
     {
       email: email.trim(),
       password,
+      recordarme: recordarme === true,
     },
     {
       credentials: "include",
@@ -57,6 +58,26 @@ export async function verificarCorreo(email, codigo) {
 export async function reenviarVerificacion(email) {
   return apiPostWithMeta("/usuarios/reenviar-verificacion/", {
     email: email.trim(),
+  });
+}
+
+export async function solicitarRecuperacionContrasena(email) {
+  return apiPost("/usuarios/solicitar-recuperacion-contrasena/", {
+    email: email.trim(),
+  });
+}
+
+export async function confirmarRecuperacionContrasena({
+  codigo,
+  email,
+  password,
+  passwordConfirmacion,
+}) {
+  return apiPost("/usuarios/confirmar-recuperacion-contrasena/", {
+    email: email.trim(),
+    codigo: String(codigo ?? "").replace(/\D/g, "").slice(0, 6),
+    password,
+    password_confirmacion: passwordConfirmacion,
   });
 }
 

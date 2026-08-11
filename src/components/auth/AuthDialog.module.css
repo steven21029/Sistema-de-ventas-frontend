@@ -204,6 +204,33 @@
   background: rgba(36, 122, 82, 0.1);
 }
 
+.loginOptions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.rememberField {
+  align-items: center !important;
+  font-size: 13px !important;
+}
+
+.recoveryButton {
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  color: var(--color-blue);
+  background: transparent;
+  font-size: 13px;
+  font-weight: 900;
+  text-align: right;
+}
+
+.recoveryButton:hover {
+  text-decoration: underline;
+}
+
 .secondaryPanel {
   display: flex;
   align-items: center;
@@ -367,6 +394,15 @@
     gap: 8px;
     padding-top: 10px;
     font-size: 13px;
+  }
+
+  .loginOptions {
+    gap: 8px;
+  }
+
+  .recoveryButton,
+  .rememberField {
+    font-size: 12px !important;
   }
 
   .secondaryPanel button {

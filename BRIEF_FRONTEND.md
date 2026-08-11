@@ -1,5 +1,10 @@
 # Brief para iniciar el frontend - Sistema web de ventas en linea
 
+> Actualizacion del 3 de agosto de 2026: para implementar el panel React usar
+> como contrato principal `docs/API_PANEL_ADMINISTRATIVO.md`. Ese documento
+> reemplaza cualquier seccion antigua de este brief que marque como pendientes
+> las APIs administrativas, los descuentos o la base neutral de pagos.
+
 Fecha de preparacion: 2026-07-22
 
 Este documento resume lo necesario para abrir una nueva conversacion y comenzar el frontend React. El backend queda pausado por ahora en este proyecto.
@@ -251,7 +256,8 @@ Payload:
 ```json
 {
   "email": "juan@example.com",
-  "password": "ClaveSegura123!"
+  "password": "ClaveSegura123!",
+  "recordarme": true
 }
 ```
 
@@ -260,11 +266,20 @@ Respuesta esperada:
 ```json
 {
   "access": "...",
-  "refresh": "...",
   "usuario": {},
   "perfil": {}
 }
 ```
+
+`recordarme` es opcional. Debe conectarse a un checkbox "Recordarme" en el
+formulario de inicio de sesion del perfil. Sin `recordarme`, la cookie dura como
+maximo 5 horas. Con `recordarme: true`, el backend extiende la cookie protegida
+a la duracion configurada en `JWT_REMEMBER_ME_DAYS` (30 dias por defecto).
+
+El `refresh token` no se entrega al codigo React. El backend lo guarda en una
+cookie `HttpOnly`. Todas las solicitudes de login, renovacion y cierre de
+sesion deben usar `credentials: "include"`. El `access token` dura 15 minutos y
+debe mantenerse solo en memoria.
 
 Si el usuario no verifico correo, no puede iniciar sesion.
 
@@ -276,11 +291,35 @@ Endpoint:
 POST /api/usuarios/token/refresh/
 ```
 
-Payload:
+No requiere payload. El navegador envia automaticamente la cookie protegida:
+
+```json
+{}
+```
+
+Respuesta:
 
 ```json
 {
-  "refresh": "REFRESH_TOKEN"
+  "access": "..."
+}
+```
+
+La renovacion no extiende la sesion original. Al cumplirse 5 horas desde el
+login, el usuario debe volver a ingresar correo y contrasena.
+
+### Cerrar sesion
+
+```text
+POST /api/usuarios/token/logout/
+```
+
+No requiere payload. Debe enviarse con `credentials: "include"`. El backend
+bloquea el refresh token y elimina la cookie.
+
+```json
+{
+  "detalle": "Sesion cerrada correctamente."
 }
 ```
 
@@ -387,10 +426,13 @@ Reglas:
 - Solo devuelve familias/categorias/productos activos.
 - Crear, editar o eliminar catalogo requiere login y permisos.
 - El `id` interno del producto no se muestra al cliente.
-- El codigo de barra es unico por empresa.
-- Todo producto inicia con existencia `0` al crearse.
-- La existencia se cambia desde inventario, no desde catalogo.
-- Los productos pueden traer `existencia`, `existencia_minima`, `agotado`, `inventario_bajo` y `estado_inventario`.
+- Cada registro trae `codigo`, generado desde `codigo_barra` o `codigo_interno`.
+- El codigo de barra es unico por empresa y obligatorio solo para productos fisicos.
+- Los servicios usan un `codigo_interno` automatico y pueden tener `codigo_barra = null`.
+- `tipo_item` puede ser `producto_fisico` o `servicio`.
+- `controla_inventario` indica si el frontend debe mostrar existencia.
+- Un producto fisico inicia con existencia `0` y se ajusta desde inventario.
+- Un servicio devuelve `existencia = null`, `agotado = false` y no usa inventario.
 
 Estados de inventario:
 
@@ -398,7 +440,11 @@ Estados de inventario:
 agotado = existencia 0
 bajo = existencia mayor que 0 y menor o igual a existencia_minima
 ok = existencia suficiente
+no_aplica = servicio sin control de existencia
 ```
+
+La respuesta de productos tambien incluye `total_vendido`. En
+`productos-mas-vendidos` se calcula usando solamente pedidos pagados.
 
 ### Paginas dinamicas de catalogo
 
@@ -427,6 +473,13 @@ Servicios:
 GET /api/catalogo/servicios/?empresa_slug=Analiza&buscar=texto
 ```
 
+Detalle de una rama de servicio:
+
+```text
+GET /api/catalogo/servicios/detalle/?empresa_slug=Analiza&servicio=imagenes
+GET /api/catalogo/servicios/detalle/?empresa_slug=Analiza&servicio=Examenes
+```
+
 Reglas:
 
 - Todos requieren `empresa_slug`.
@@ -435,7 +488,10 @@ Reglas:
 - Productos y paquetes devuelven `imagen_final`.
 - Si hay `imagen_url`, `imagen_final` usa esa URL externa.
 - Si no hay `imagen_url`, `imagen_final` usa la imagen local del backend.
-- `servicios` usa familias activas como tipos grandes de servicio.
+- `servicios` usa familias activas como ramas grandes de servicio.
+- En servicios: Familia = rama principal, Categoria = opcion interna, Producto = vendible.
+- `/catalogo/servicios/` devuelve las ramas y un resumen de categorias.
+- `/catalogo/servicios/detalle/` devuelve la rama con categorias y productos agrupados.
 - `combos-destacados` devuelve paquetes tipo combo con `destacado=true`.
 - `perfiles` devuelve paquetes tipo perfil con productos internos.
 
@@ -457,6 +513,7 @@ Uso:
 
 - cargar nombre de empresa;
 - logo;
+- imagen general de sucursales;
 - slug;
 - subdominio;
 - dominio personalizado;
@@ -466,7 +523,53 @@ Uso:
 - direccion;
 - sitio web;
 - `tiene_envios`;
-- `opciones_entrega_disponibles`.
+- `opciones_entrega_disponibles`;
+- `modo_inventario`;
+- `modo_inventario_nombre`;
+- `permite_productos_fisicos`;
+- `permite_servicios`;
+- `redes_sociales`.
+
+Las redes se cargan una sola vez desde la configuracion publica de empresa:
+
+```json
+{
+  "redes_sociales": {
+    "instagram_url": "https://www.instagram.com/analiza",
+    "whatsapp_url": "https://wa.me/50499999999",
+    "facebook_url": "https://www.facebook.com/analiza",
+    "tiktok_url": "https://www.tiktok.com/@analiza"
+  }
+}
+```
+
+Reglas para frontend:
+
+- No consultar Contacto ni Sobre nosotros para obtener las redes.
+- Reutilizar `empresa.redes_sociales` debajo del nombre de la empresa en
+  Contacto y al final de Sobre nosotros.
+- Mostrar solamente los iconos cuya URL no este vacia.
+- Abrir los enlaces externos en otra pestana con `noopener noreferrer`.
+- Instagram, WhatsApp, Facebook y TikTok son opciones fijas; no se crean redes
+  genericas.
+
+Modos posibles:
+
+```text
+inventariado
+sin_inventario
+mixto
+```
+
+Analiza usa `sin_inventario`. En una empresa mixta, el formulario de alta
+debe preguntar si se agrega `producto_fisico` o `servicio`.
+
+Campos de imagen general de sucursales en empresa:
+
+```text
+imagen_sucursales_url
+imagen_sucursales_final
+```
 
 Regla multiempresa:
 
@@ -489,12 +592,23 @@ direccion
 telefono
 horario
 google_maps_url
+imagen_final
 latitud
 longitud
 orden
 ```
 
-El frontend debe usar `google_maps_url` como enlace hacia Google Maps.
+El frontend debe usar:
+
+- `imagen_final` para mostrar la imagen de la sucursal.
+- `google_maps_url` como enlace hacia Google Maps.
+
+Regla de imagen:
+
+- Todas las sucursales pueden usar una sola imagen general configurada en la empresa.
+- El frontend no debe escoger imagen por sucursal manualmente; debe usar `imagen_final`.
+- Si la empresa tiene imagen general de sucursales, `imagen_final` devuelve esa misma imagen para todas.
+- Si no hay ninguna imagen, `imagen_final` devuelve `null`.
 
 ## 10. Menu principal por empresa implementado
 
@@ -544,7 +658,10 @@ Reglas para frontend:
 - Ordenar por `orden` si el frontend necesita ordenar, aunque el backend ya lo devuelve ordenado.
 - Si un item no viene en la respuesta, no debe mostrarse.
 - No dejar nombres fijos como "Examenes" o "Servicios" en el componente.
-- Si `abre_en_nueva_pestana = true`, abrir con target externo.
+- No usar Servicios ni otra pagina como respaldo para rutas desconocidas.
+- `clave`, `ruta` y `abre_en_nueva_pestana` son fijos y no se editan.
+- El administrador solo cambia `texto`, `orden` y `activo`.
+- No existe creacion ni eliminacion de items del menu.
 
 El menu predeterminado actual es:
 
@@ -556,9 +673,56 @@ Servicios
 Promociones
 Sucursales
 Contacto
+Sobre nosotros
 ```
 
 Cada empresa puede cambiar esos textos desde el backend/admin.
+
+### 10.1 Plantilla fija de Sobre nosotros
+
+Ruta oficial del frontend:
+
+```text
+/sobre-nosotros
+```
+
+Endpoint publico:
+
+```text
+GET /api/empresas/sobre-nosotros/?empresa_slug=Analiza
+```
+
+Respuesta:
+
+```json
+{
+  "titulo": "Sobre Analiza",
+  "introduccion": "",
+  "historia": "",
+  "mision": "",
+  "vision": "",
+  "valores_lista": ["Calidad", "Etica", "Servicio"],
+  "compromiso": "",
+  "imagen_final": null
+}
+```
+
+Reglas:
+
+- Crear un unico componente React para esta plantilla.
+- Ocultar las secciones cuyo texto este vacio.
+- Mostrar los valores usando `valores_lista`.
+- Usar `imagen_final` para archivo local o futura URL de R2.
+- Si la API responde `404`, el modulo esta desactivado para esa empresa.
+- No reutilizar la pagina Servicios para esta ruta.
+- No crear un sistema de paginas genericas.
+
+Endpoint administrativo:
+
+```text
+GET /api/empresas/mi-sobre-nosotros/
+PATCH /api/empresas/mi-sobre-nosotros/
+```
 
 ## 11. Banner promocional implementado
 
@@ -572,7 +736,7 @@ Uso:
 
 - banner central;
 - carrusel futuro;
-- promociones visuales por empresa.
+- entrada visual hacia una pagina interna o externa.
 
 Campos importantes para frontend:
 
@@ -591,6 +755,10 @@ fecha_fin
 Reglas:
 
 - Cada banner pertenece a una empresa.
+- El banner no es la pagina Promociones.
+- El banner no debe listarse dentro de Promociones.
+- El banner solo se muestra en carrusel y redirige usando `url_boton`.
+- `url_boton` puede ser ruta interna como `/promociones/oferta-1` o URL externa.
 - La API publica devuelve solo banners activos y vigentes.
 - Si no hay banners activos, la respuesta debe ser `[]` y el frontend debe ocultar el espacio del banner.
 - Aunque exista token de administrador guardado en el navegador, la llamada normal no devuelve banners inactivos.
@@ -623,7 +791,65 @@ Endpoint administrativo para ver tambien banners desactivados:
 GET /api/promociones/banners/?empresa_slug=Analiza&incluir_inactivos=true
 ```
 
-## 12. Carrito y pedidos implementados
+## 12. Promociones y ofertas implementadas
+
+La pagina Promociones debe consumir este endpoint:
+
+```text
+GET /api/promociones/ofertas/?empresa_slug=Analiza&buscar=texto
+```
+
+No debe consumir:
+
+```text
+GET /api/promociones/banners/
+```
+
+Tipos de oferta:
+
+```text
+producto = oferta de un producto individual
+productos = oferta de varios productos juntos
+paquete = oferta vinculada a combo o perfil
+```
+
+Ejemplo de respuesta:
+
+```json
+[
+  {
+    "tipo": "producto",
+    "codigo": "OFERTA-001",
+    "titulo": "Hemograma en oferta",
+    "descripcion": "Precio especial por tiempo limitado.",
+    "precio_normal": "150.00",
+    "precio_oferta": "120.00",
+    "porcentaje_descuento": 20,
+    "imagen_final": "https://example.com/oferta.jpg",
+    "url_destino": "/promociones/oferta-001",
+    "paquete_resumen": null,
+    "productos": [
+      {
+        "codigo_barra": "HEMO-001",
+        "nombre": "Hemograma",
+        "precio": "150.00"
+      }
+    ],
+    "orden": 1
+  }
+]
+```
+
+Reglas:
+
+- Las ofertas son independientes de los banners.
+- Solo devuelve ofertas activas y vigentes.
+- No expone IDs internos.
+- Usa `imagen_final`.
+- Si `url_destino` viene lleno, el frontend puede usarlo para abrir detalle o ruta interna.
+- Los administradores pueden ver inactivas con `incluir_inactivos=true`.
+
+## 13. Carrito y pedidos implementados
 
 El carrito del backend requiere usuario autenticado.
 
@@ -636,26 +862,44 @@ POST /api/pedidos/carritos/mi-carrito/
 
 Este endpoint crea o devuelve el carrito activo del usuario autenticado.
 
-Agregar producto al carrito sin exponer id interno:
+Agregar cualquier articulo al carrito sin exponer ids internos:
 
 ```text
-POST /api/pedidos/carritos/{id}/agregar-producto/
+POST /api/pedidos/carritos/{id}/agregar-articulo/
 ```
 
 Payload:
 
 ```json
 {
-  "codigo_barra": "ABC123",
+  "codigo": "PERFIL-001",
+  "tipo_articulo": "perfil",
   "cantidad": 1
 }
 ```
 
+`tipo_articulo` acepta:
+
+- `producto`: producto fisico, servicio o examen.
+- `perfil`: perfil de catalogo.
+- `combo`: combo de catalogo.
+
+El frontend debe enviar siempre `tipo_articulo`. Si se omite y el codigo
+coincide con mas de un tipo, el backend rechaza la solicitud.
+
 Respuesta:
 
 - devuelve el carrito actualizado;
-- los items incluyen codigo de barra, nombre, imagen, cantidad y precio;
-- no devuelve el `id` interno del producto.
+- los items incluyen `codigo`, `tipo_articulo`, `articulo_nombre`,
+  `codigo_barra`, `tipo_item`, `controla_inventario`, `agotado`,
+  `imagen_final`, cantidad, precio y subtotal;
+- no devuelve ids internos de productos o paquetes;
+- para productos fisicos valida la existencia disponible;
+- para servicios permite vender sin comparar contra existencia.
+- para perfiles y combos valida todos sus componentes fisicos;
+- suma el inventario compartido entre diferentes lineas del carrito;
+- agregar nuevamente el mismo articulo aumenta su cantidad sin duplicarlo;
+- `mi-carrito` actualiza los precios guardados con el precio actual.
 
 Carritos:
 
@@ -709,13 +953,87 @@ GET /api/pedidos/pedidos/
 GET /api/pedidos/pedidos/{id}/
 ```
 
+Los detalles del pedido usan:
+
+- `tipo_articulo`;
+- `codigo_articulo`;
+- `nombre_articulo`;
+- `componentes`, para perfiles y combos.
+
+Los componentes son una fotografia de lo comprado. Si el administrador cambia
+la composicion del paquete despues, el pedido conserva la composicion original.
+El frontend debe mostrar `nombre_articulo`, `codigo_articulo`, precios,
+descuentos y componentes guardados en el detalle. No debe reconstruir un
+pedido consultando nuevamente el catalogo.
+
+Los endpoints de pedidos y detalles son de solo lectura. `POST`, `PATCH`,
+`PUT` y `DELETE` no estan permitidos. Un pedido se crea exclusivamente con
+`generar-pedido`, siempre inicia pendiente y solo el proceso de pago puede
+cambiarlo a pagado.
+
+Despues del checkout quedan congelados el tipo de entrega, destinatario,
+direccion, subtotal, descuento, impuesto, tarifa de envio, total, moneda,
+articulos y componentes. Los cambios posteriores en catalogo, promociones,
+impuestos o tarifas no modifican pedidos anteriores.
+
 Prefactura:
 
 ```text
 GET /api/pedidos/pedidos/{id}/prefactura/
 ```
 
-## 13. Favoritos implementados
+### Pagos preparados para integrar una pasarela
+
+Iniciar o recuperar el intento pendiente del pedido autenticado:
+
+```text
+POST /api/pagos/iniciar/
+```
+
+```json
+{
+  "pedido_id": 25
+}
+```
+
+El frontend no debe enviar monto, moneda, empresa ni cliente. El backend los
+toma de la fotografia inmutable del pedido. Repetir la solicitud devuelve el
+mismo pago pendiente y no crea duplicados.
+
+Respuesta principal:
+
+```json
+{
+  "referencia": "4c07496c-5c30-4b41-8759-554c7811ae17",
+  "pedido_numero": "A1B2C3D4E5F6",
+  "proveedor": "simulado",
+  "identificador_externo": "",
+  "monto": "230.00",
+  "moneda": "HNL",
+  "estado": "pendiente",
+  "url_pago": ""
+}
+```
+
+Consultar pagos del usuario:
+
+```text
+GET /api/pagos/
+GET /api/pagos/{referencia}/
+```
+
+Reglas para el frontend:
+
+- Solo puede iniciar pagos del cliente autenticado.
+- Un rechazo permite iniciar un intento nuevo.
+- Un pago aprobado marca el pedido como pagado mediante webhook.
+- El frontend nunca marca un pago ni un pedido como aprobado.
+- El webhook es exclusivo del proveedor y el frontend no debe invocarlo.
+- `url_pago` se usara para redirigir cuando se conecte la pasarela real.
+- La configuracion `simulado` actual no cobra dinero real ni devuelve una URL.
+- No se envian ni almacenan numeros de tarjeta, CVV o credenciales bancarias.
+
+## 14. Favoritos implementados
 
 Favoritos requieren usuario autenticado.
 
@@ -725,7 +1043,7 @@ Listar favoritos:
 GET /api/favoritos/?empresa_slug=Analiza
 ```
 
-Agregar favorito sin exponer id interno del producto:
+Agregar favorito sin exponer ids internos:
 
 ```text
 POST /api/favoritos/
@@ -736,9 +1054,43 @@ Payload:
 ```json
 {
   "empresa_slug": "Analiza",
-  "codigo_barra": "ABC123"
+  "codigo": "PERFIL-001",
+  "tipo_articulo": "perfil"
 }
 ```
+
+Valores de `tipo_articulo`:
+
+- `producto`: producto fisico, servicio o examen.
+- `perfil`: perfil de catalogo.
+- `combo`: combo de catalogo.
+
+Para mantener el contrato sin ambiguedades, el frontend debe enviar siempre
+`tipo_articulo`. Si se omite, el backend intenta identificarlo por el codigo y
+solo lo acepta cuando existe una unica coincidencia.
+
+Campos unificados de cada favorito:
+
+```json
+{
+  "id": 15,
+  "tipo_articulo": "perfil",
+  "articulo_codigo": "PERFIL-001",
+  "articulo_nombre": "Perfil preventivo",
+  "articulo_descripcion": "Evaluacion preventiva",
+  "articulo_imagen_final": "https://example.com/perfil.jpg",
+  "articulo_precio": "500.00",
+  "articulo_agotado": false,
+  "articulo_familia": null,
+  "articulo_categoria": null,
+  "fecha_creacion": "2026-07-30T21:00:00Z"
+}
+```
+
+Para productos, servicios o examenes, `articulo_familia` y
+`articulo_categoria` contienen su clasificacion. Los campos antiguos
+`producto_*` se conservan temporalmente para compatibilidad, pero las vistas
+nuevas deben usar los campos `articulo_*`.
 
 Eliminar favorito:
 
@@ -748,11 +1100,29 @@ DELETE /api/favoritos/{id}/
 
 Reglas:
 
-- No duplica el mismo producto como favorito para el mismo usuario y empresa.
-- El producto debe estar activo.
-- El producto se identifica por codigo de barra.
+- Los favoritos se guardan permanentemente por usuario y empresa.
+- No duplica el mismo articulo para el mismo usuario y empresa.
+- El producto, servicio, examen, perfil o combo debe estar activo.
+- Cada favorito apunta exactamente a un producto o a un perfil/combo.
+- Los favoritos de un cliente nunca aparecen en la cuenta de otro cliente.
+- Las imagenes de productos respetan `productos_con_imagen`.
+- Perfiles y combos conservan sus propias imagenes.
+- El articulo se identifica por `codigo` y `tipo_articulo`.
+- `codigo_barra` continua aceptado temporalmente para compatibilidad.
+- Un visitante sin sesion puede usar almacenamiento temporal del navegador,
+  pero debe iniciar sesion para persistir favoritos en la base de datos.
 
-## 14. Inventario interno implementado
+Regla visual de la vista de Favoritos:
+
+- Las cards no deben recortarse por el contenedor padre.
+- Evitar `overflow: hidden` en la grilla/lista que contiene las cards, salvo en
+  la imagen interna.
+- La grilla debe usar `gap` y padding inferior suficientes para estados hover,
+  sombras y botones.
+- En movil, usar una sola columna con ancho `minmax(0, 1fr)` para que nombres,
+  precios y botones no desborden.
+
+## 15. Inventario interno implementado
 
 Estas rutas son para pantallas internas de administrador/gerente, no para la tienda publica.
 
@@ -761,6 +1131,9 @@ Permisos:
 - Administrador maestro puede ver todas las empresas o filtrar por `empresa_slug`.
 - Administrador de empresa y gerente solo ven su empresa.
 - Comprador no puede entrar a inventario.
+- Los servicios no aparecen en ningun listado o resumen de inventario.
+- No se pueden crear movimientos de inventario para servicios.
+- Una empresa `sin_inventario`, como Analiza, obtiene listados de inventario vacios.
 
 Headers:
 
@@ -853,9 +1226,10 @@ Reglas:
 - El ajuste puede ser `0`.
 - Entrada y salida deben ser mayores que `0`.
 - Cada ajuste crea historial en movimientos.
-- El frontend debe identificar producto por `codigo_barra`, no por `id` interno.
+- Inventario solo trabaja con productos fisicos y continua usando
+  `codigo_barra`, no el `id` interno.
 
-## 15. Entrega
+## 16. Entrega
 
 Regla por empresa:
 
@@ -893,7 +1267,7 @@ Nota:
 - Administrador maestro y administrador de empresa pueden cambiar tarifas.
 - Compradores no administran tarifas.
 
-## 16. Totales de pedido
+## 17. Totales de pedido
 
 Formula aprobada:
 
@@ -914,11 +1288,12 @@ pagado
 
 Cuando un pedido pasa a `pagado`:
 
-- se descuenta inventario;
+- se descuenta inventario solo de productos fisicos;
+- los servicios quedan registrados como ventas sin movimiento de inventario;
 - se genera prefactura;
 - no se descuenta inventario dos veces.
 
-## 17. Prefactura
+## 18. Prefactura
 
 La prefactura existe como JSON, no como PDF todavia.
 
@@ -986,11 +1361,11 @@ Endpoint administrativo:
 GET /api/contacto/mensajes/?empresa_slug=Analiza
 ```
 
-## 18. APIs que faltan antes de cerrar el frontend completo
+## 19. APIs que faltan antes de cerrar el frontend completo
 
 Estas APIs no bloquean empezar el frontend visual, pero si deben resolverse antes de terminar compra real.
 
-### 18.1 Pagos
+### 19.1 Pagos
 
 PayPal esta aprobado como primera pasarela futura, pero no esta implementado.
 
@@ -1002,33 +1377,31 @@ Falta:
 - guardar referencia de transaccion;
 - cambiar pedido a `pagado` despues de confirmacion real.
 
-### 18.2 Descuentos de productos
+### 19.2 Descuentos aplicados al checkout
 
-El banner promocional ya existe.
+Las ofertas promocionales ya existen para la pagina Promociones.
 
-No hay modelos ni APIs de descuentos de productos todavia.
+Pendiente: aplicar esas ofertas automaticamente al carrito/pedido.
 
-El pedido tiene `descuento_total`, pero no existe todavia logica de promociones.
-
-### 18.3 PDF de prefactura
+### 19.3 PDF de prefactura
 
 La prefactura existe como JSON.
 
 Falta generar PDF o plantilla visual imprimible.
 
-### 18.4 Imagenes en produccion
+### 19.4 Imagenes en produccion
 
 El backend usa `media/` local para imagenes.
 
 Para produccion falta definir almacenamiento en linea vinculado al proyecto.
 
-### 18.5 Direcciones guardadas del cliente
+### 19.5 Direcciones guardadas del cliente
 
 El pedido ya permite direccion simple para envio local y nacional.
 
 Falta solo si se quiere guardar una libreta de direcciones reutilizables por cliente.
 
-## 19. Recomendacion para empezar frontend
+## 20. Recomendacion para empezar frontend
 
 Se puede iniciar el frontend con este orden:
 
@@ -1050,7 +1423,7 @@ Se puede iniciar el frontend con este orden:
 16. Mostrar pedidos y prefactura JSON.
 17. Dejar pagos como pendiente hasta PayPal.
 
-## 20. Reglas importantes para la otra conversacion
+## 21. Reglas importantes para la otra conversacion
 
 - No convertir la pagina en landing page.
 - El catalogo y ventas son lo primero.
@@ -1059,6 +1432,9 @@ Se puede iniciar el frontend con este orden:
 - No agregar citas medicas.
 - No duplicar acceso a "Mi cuenta".
 - No dejar nombres fijos en el menu principal; usar el menu que devuelve el backend.
+- Cargar las redes una sola vez desde la configuracion publica de empresa y
+  reutilizarlas en Contacto y Sobre nosotros.
+- No usar banners como listado de promociones; la pagina Promociones usa `promociones/ofertas/`.
 - No mostrar id interno del producto al cliente.
 - Para inventario interno, usar `codigo_barra` para ajustar existencias.
 - Usar `empresa_slug = Analiza` como respaldo local, pero preferir resolver empresa con `/api/empresas/actual/`.
@@ -1066,7 +1442,7 @@ Se puede iniciar el frontend con este orden:
 - No integrar PayPal ni Brevo real sin autorizacion.
 - No conectar Supabase sin autorizacion.
 
-## 21. Estado final del backend para frontend
+## 22. Estado final del backend para frontend
 
 Listo para empezar frontend:
 
@@ -1076,6 +1452,7 @@ Listo para empezar frontend:
 - Paginas dinamicas de inicio, examenes, perfiles, servicios y sucursales.
 - Formulario publico de contacto.
 - Banner promocional por empresa.
+- Ofertas promocionales separadas de banners.
 - Filtros de catalogo.
 - Login JWT.
 - Registro comprador.

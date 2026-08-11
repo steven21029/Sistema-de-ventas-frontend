@@ -7,11 +7,13 @@ import Header from "../components/layout/Header";
 import MainNav from "../components/layout/MainNav";
 import { DEMO_BANNERS, DEMO_EMPRESA } from "../config/demoContent";
 import {
+  confirmarRecuperacionContrasena,
   loginUsuario,
   logoutUsuario,
   reenviarVerificacion,
   registrarComprador,
   restoreUsuarioSession,
+  solicitarRecuperacionContrasena,
   verificarCorreo,
 } from "../services/authService";
 import { setApiUnauthorizedHandler } from "../services/apiClient";
@@ -40,6 +42,7 @@ import ProductListPage from "../pages/ProductListPage";
 import PromotionsPage from "../pages/PromotionsPage";
 import ServiceTypesPage from "../pages/ServiceTypesPage";
 import { getApiErrorMessage } from "../utils/apiError";
+import { clearAuthFlow, getAuthFlow, updateAuthFlow } from "../utils/authFlow";
 import { findActiveMenuItem, normalizeMenuItems, normalizePath } from "../utils/menu";
 import { toNumber } from "../utils/money";
 import styles from "./App.module.css";
@@ -328,7 +331,7 @@ function App() {
   const [cartCalculationError, setCartCalculationError] = useState("");
   const [isCartCalculating, setIsCartCalculating] = useState(false);
   const [authSession, setAuthSession] = useState(null);
-  const [authOpen, setAuthOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(() => getAuthFlow()?.isOpen === true);
   const [isAuthRestoring, setIsAuthRestoring] = useState(true);
   const [favorites, setFavorites] = useState([]);
   const [favoritesOpen, setFavoritesOpen] = useState(false);
@@ -432,6 +435,17 @@ function App() {
       clearUnauthorizedHandler();
     };
   }, []);
+
+  useEffect(() => {
+    if (authSession) {
+      clearAuthFlow();
+      return;
+    }
+
+    if (authOpen || getAuthFlow()) {
+      updateAuthFlow({ isOpen: authOpen });
+    }
+  }, [authOpen, authSession]);
 
   useEffect(() => {
     setSearchText("");
@@ -1123,8 +1137,8 @@ function App() {
     setCartItems((current) => current.filter((item) => item.cartKey !== cartKey));
   }
 
-  async function handleLogin(email, password) {
-    const session = await loginUsuario(email, password);
+  async function handleLogin(email, password, recordarme) {
+    const session = await loginUsuario(email, password, recordarme);
 
     if (
       session?.usuario?.is_superuser === true ||
@@ -1151,6 +1165,14 @@ function App() {
 
   async function handleResendBuyerVerification(email) {
     return reenviarVerificacion(email);
+  }
+
+  async function handleRequestPasswordRecovery(email) {
+    return solicitarRecuperacionContrasena(email);
+  }
+
+  async function handleConfirmPasswordRecovery(formData) {
+    return confirmarRecuperacionContrasena(formData);
   }
 
   function handleOpenAdminPanel() {
@@ -1606,7 +1628,9 @@ function App() {
         onLogin={handleLogin}
         onLogout={handleLogout}
         onOpenAdminPanel={handleOpenAdminPanel}
+        onConfirmPasswordRecovery={handleConfirmPasswordRecovery}
         onRegister={handleRegisterBuyer}
+        onRequestPasswordRecovery={handleRequestPasswordRecovery}
         onResendVerification={handleResendBuyerVerification}
         onVerifyEmail={handleVerifyBuyerEmail}
         session={authSession}

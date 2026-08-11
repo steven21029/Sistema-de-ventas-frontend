@@ -1812,3 +1812,68 @@ Verificacion:
 - Sucursales requiere aplicar la migracion local que agrega
   `empresas_sucursalempresa.ciudad`; el frontend mantiene disponibles los otros
   filtros mientras esa fuente responde con error.
+
+## 2026-08-11 - Persistencia de registro, verificacion y checkout
+
+Estado: implementado y verificado en frontend.
+
+- El cuadro de cuenta conserva por pestana si estaba abierto y restaura el
+  paso de inicio de sesion, creacion de cuenta o activacion despues de recargar.
+- Registro conserva nombre, correo, telefono, identidad y aceptaciones; la
+  activacion conserva el correo pendiente.
+- Las contrasenas y el codigo de seis digitos nunca se guardan y siempre se
+  restauran vacios.
+- Al completar la verificacion se abandona el estado pendiente y al iniciar
+  sesion se elimina el borrador de autenticacion.
+- Checkout conserva tipo y datos de entrega, metodo de pago y sucursal,
+  aislados por empresa y usuario, y limpia el borrador al iniciar el pago.
+
+Archivos modificados:
+
+- `src/app/App.jsx`.
+- `src/components/auth/AuthDialog.jsx`.
+- `src/pages/CheckoutPage.jsx`.
+- `src/utils/authFlow.js`.
+- `src/utils/paymentContext.js`.
+- `CONTEXTO_CONTINUACION.md`.
+- `REGISTRO_CAMBIOS_CONTINUOS.md`.
+
+Verificacion:
+
+- `npm run build`: correcto; Vite transformo 1643 modulos.
+- Chrome headless: verificacion y registro restaurados despues de recargar;
+  correo y datos no sensibles presentes, contrasenas y codigo vacios.
+
+## 2026-08-11 - Recordarme, recuperacion de contrasena y Favoritos responsive
+
+Estado: implementado y verificado en frontend con el contrato actualizado.
+
+- Login incorpora `Recordarme` y envia `recordarme` como booleano; login,
+  refresh y logout conservan la cookie protegida mediante credenciales.
+- `Olvide mi contrasena` solicita el codigo por correo y presenta un segundo
+  paso para codigo, nueva contrasena y confirmacion.
+- El codigo se limita a seis digitos y se envia como string.
+- Los pasos de recuperacion sobreviven una recarga conservando solo el correo;
+  codigo y contrasenas se restauran vacios.
+- Se muestran los mensajes utiles del backend y se permite solicitar un nuevo
+  codigo desde el segundo paso.
+- El drawer de Favoritos usa el alto del viewport, scroll interno y padding
+  suficiente; en movil las cards pasan a una sola columna.
+
+Archivos modificados:
+
+- `src/app/App.jsx`.
+- `src/components/auth/AuthDialog.jsx`.
+- `src/components/auth/AuthDialog.module.css`.
+- `src/components/favorites/FavoritesDrawer.module.css`.
+- `src/services/authService.js`.
+- `src/utils/authFlow.js`.
+- `CONTEXTO_CONTINUACION.md`.
+- `REGISTRO_CAMBIOS_CONTINUOS.md`.
+
+Verificacion:
+
+- `npm run build`: correcto; Vite transformo 1643 modulos.
+- Chrome headless a 320 px: payloads de login y recuperacion comprobados,
+  secretos vacios tras recargar y Favoritos sin desbordamiento horizontal ni
+  botones recortados.

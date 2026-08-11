@@ -17,8 +17,11 @@ import { generarPedidoDesdeCarrito } from "../services/pedidoService";
 import { getApiErrorMessage } from "../utils/apiError";
 import { formatMoney, toNumber } from "../utils/money";
 import {
+  clearCheckoutDraft,
   clearPendingOrder,
+  getCheckoutDraft,
   getPendingOrder,
+  saveCheckoutDraft,
   savePaymentContext,
   savePendingOrder,
 } from "../utils/paymentContext";
@@ -57,6 +60,7 @@ function CheckoutPage({
   taxPercentage,
   totals,
 }) {
+  const checkoutScope = `${empresaSlug}:${authSession?.usuario?.id || ""}`;
   const [deliveryType, setDeliveryType] = useState(
     empresa?.tiene_envios ? "envio_local" : "retiro_en_local",
   );
@@ -76,18 +80,66 @@ function CheckoutPage({
   const [branchesError, setBranchesError] = useState("");
   const [feedback, setFeedback] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const checkoutScope = `${empresaSlug}:${authSession?.usuario?.id || ""}`;
+  const [checkoutDraftReadyScope, setCheckoutDraftReadyScope] = useState("");
 
   useEffect(() => {
+    const storedDraft = getCheckoutDraft(checkoutScope) || {};
+    const storedFields = storedDraft.fields || {};
+
+    setCheckoutDraftReadyScope("");
     setPendingOrder(getPendingOrder(checkoutScope));
-    setDeliveryType(empresa?.tiene_envios ? "envio_local" : "retiro_en_local");
-    setPaymentMethod("en_linea");
-    setSelectedBranchId("");
-    setFields((current) => ({
-      ...current,
+    setDeliveryType(
+      empresa?.tiene_envios &&
+        ["envio_local", "envio_nacional", "retiro_en_local"].includes(
+          storedDraft.deliveryType,
+        )
+        ? storedDraft.deliveryType
+        : empresa?.tiene_envios
+          ? "envio_local"
+          : "retiro_en_local",
+    );
+    setPaymentMethod(
+      ["en_linea", "sucursal"].includes(storedDraft.paymentMethod)
+        ? storedDraft.paymentMethod
+        : "en_linea",
+    );
+    setSelectedBranchId(String(storedDraft.selectedBranchId || ""));
+    setFields({
       ...getCustomerDefaults(authSession),
-    }));
+      departamento_entrega: String(storedFields.departamento_entrega || ""),
+      direccion_entrega: String(storedFields.direccion_entrega || ""),
+      municipio_entrega: String(storedFields.municipio_entrega || ""),
+      nombre_recibe: String(
+        storedFields.nombre_recibe || getCustomerDefaults(authSession).nombre_recibe,
+      ),
+      observaciones: String(storedFields.observaciones || ""),
+      referencia_entrega: String(storedFields.referencia_entrega || ""),
+      telefono_recibe: String(
+        storedFields.telefono_recibe || getCustomerDefaults(authSession).telefono_recibe,
+      ),
+    });
+    setCheckoutDraftReadyScope(checkoutScope);
   }, [authSession, checkoutScope, empresa?.tiene_envios]);
+
+  useEffect(() => {
+    if (!checkoutScope || checkoutDraftReadyScope !== checkoutScope) {
+      return;
+    }
+
+    saveCheckoutDraft(checkoutScope, {
+      deliveryType,
+      fields,
+      paymentMethod,
+      selectedBranchId,
+    });
+  }, [
+    checkoutDraftReadyScope,
+    checkoutScope,
+    deliveryType,
+    fields,
+    paymentMethod,
+    selectedBranchId,
+  ]);
 
   useEffect(() => {
     let isActive = true;
@@ -223,6 +275,7 @@ function CheckoutPage({
       }
 
       clearPendingOrder(checkoutScope);
+      clearCheckoutDraft(checkoutScope);
       onPaymentStarted(payment);
     } catch (error) {
       setFeedback(

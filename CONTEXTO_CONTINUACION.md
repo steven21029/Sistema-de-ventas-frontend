@@ -36,7 +36,7 @@ Reglas de precedencia:
 | Promociones, sucursales y contacto | Implementado | Ofertas, ubicaciones, Google Maps, redes sociales y formulario de contacto | Validar URLs, accesibilidad y flujo con datos reales de cada empresa |
 | Sobre nosotros | Implementado | Plantilla publica y editor administrativo por empresa | Validar contenido e imagen final de cada empresa |
 | Inicio y cierre de sesion | Implementado | JWT, access token en memoria, refresh `HttpOnly`, restauracion y logout | Pruebas automatizadas de expiracion y concurrencia de requests |
-| Registro y recuperacion | Parcial | Registro de comprador, verificacion de correo y reenvio de codigo desde Mi cuenta | Crear recuperacion de contrasena y pruebas E2E del alta de cuenta |
+| Registro y recuperacion | Implementado | Registro, verificacion, reenvio y recuperacion de contrasena por codigo desde Mi cuenta | Pruebas E2E del alta y recuperacion con correo real |
 | Favoritos | Implementado | Persistencia por usuario/empresa y paso al carrito | Pruebas de cambio de empresa, articulo inactivo y sesion expirada |
 | Carrito | Parcial | Invitado en `localStorage`, autenticado en backend, calculo de precios e inventario | Resolver y verificar definitivamente la fusion invitado -> usuario |
 | Checkout y pedidos | Implementado con pendientes | Retiro, envio local/nacional, pedido congelado y reintento de pago | Tarifa real de envio, QA de errores y portal del comprador |
@@ -376,21 +376,25 @@ Archivos: `src/pages/AboutPage.jsx` y `src/admin/AboutSettingsPage.jsx`.
 - El codigo se limita a 6 digitos y siempre se envia al API como texto.
 - Login, contrasena y confirmacion disponen de controles Eye/EyeOff de Lucide
   que no envian el formulario.
+- Login envia `recordarme` al backend desde un checkbox; React mantiene el
+  access token solo en memoria y la duracion depende de la cookie `HttpOnly`.
 - Crear la cuenta no solicita otro codigo: el primer envio queda a cargo del
   registro. El mensaje `Código reenviado` aparece solamente cuando el endpoint
   de reenvio responde con HTTP `200`.
 - Los errores de registro, verificacion y reenvio muestran el mensaje util
   devuelto por el backend cuando esta disponible.
+- Recuperacion solicita un codigo por correo y confirma codigo, nueva
+  contrasena y confirmacion mediante los endpoints oficiales.
+- Correo y paso de recuperacion sobreviven una recarga; codigo y contrasenas
+  nunca se guardan en almacenamiento web.
 
 ### Pendiente en el frontend
 
-- Solicitud y confirmacion de recuperacion de contrasena.
 - Pantalla de perfil del comprador.
 - Edicion de datos personales.
 - Historial de pedidos del comprador.
 - Direcciones guardadas.
 
-La recuperacion de contrasena ya tiene endpoints documentados en el backend.
 Para perfil, pedidos y direcciones debe confirmarse el contrato exacto antes
 de construir las pantallas.
 
@@ -403,6 +407,8 @@ de construir las pantallas.
 - Se muestran en un drawer.
 - Se puede agregar un favorito directamente al carrito.
 - Sin sesion se abre el login.
+- El drawer ocupa el alto visible, desplaza internamente su lista y usa cards
+  de una columna en movil sin recortar nombres, precios ni botones.
 
 ### Carrito invitado
 
@@ -806,7 +812,7 @@ sola que cada flujo de negocio funcione contra datos reales.
 ### Prioridad alta: cerrar funcionalidad principal
 
 1. Resolver y probar la fusion del carrito invitado al autenticarse.
-2. Construir recuperacion de contrasena y probar el alta/verificacion de cuenta.
+2. Probar alta, verificacion y recuperacion de contrasena con correo real.
 3. Integrar una pasarela de pago real y redirigir a `url_pago`.
 4. Definir calculo/tarifa real de envio antes de cobrar.
 5. Ejecutar pruebas E2E del recorrido catalogo -> carrito -> login -> pedido ->
@@ -888,6 +894,10 @@ sola que cada flujo de negocio funcione contra datos reales.
 - Con envios: `Carrito -> Entrega -> Pago`.
 - Mantener checkout y estado de pago en pantallas separadas.
 - No almacenar datos bancarios sensibles en React.
+- Los pasos de acceso, registro, verificacion y checkout deben sobrevivir una
+  recarga dentro de la misma pestana mediante `sessionStorage`.
+- Nunca guardar contrasenas ni codigos de verificacion en almacenamiento web;
+  esos valores se mantienen solo en memoria y se solicitan nuevamente.
 - Pedidos y pagos administrativos son historial de solo lectura, salvo que se
   apruebe un flujo de negocio controlado.
 - `.agents/`, `skills-lock.json`, `node_modules/` y `dist/` no deben subirse.
@@ -899,6 +909,8 @@ primera version deben cumplirse al menos estas condiciones:
 
 - comprador puede registrarse, verificar correo, iniciar/cerrar sesion y
   recuperar contrasena;
+- registro, verificacion y checkout conservan su paso y datos no sensibles al
+  recargar la pagina;
 - carrito conserva articulos al recargar y al autenticarse;
 - precios, descuentos, inventario, impuesto y envio coinciden con backend;
 - pedido se crea una sola vez aunque falle o se repita el pago;

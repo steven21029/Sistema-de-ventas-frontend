@@ -1,5 +1,6 @@
 const PENDING_ORDER_PREFIX = "ventas_pending_order_v1";
 const PAYMENT_CONTEXT_PREFIX = "ventas_payment_context_v1";
+const CHECKOUT_DRAFT_PREFIX = "ventas_checkout_draft_v1";
 
 function readSessionValue(key) {
   if (typeof window === "undefined") {
@@ -46,6 +47,10 @@ function getPaymentContextKey(referencia) {
   return `${PAYMENT_CONTEXT_PREFIX}:${String(referencia).toLowerCase()}`;
 }
 
+function getCheckoutDraftKey(scope) {
+  return `${CHECKOUT_DRAFT_PREFIX}:${String(scope).toLowerCase()}`;
+}
+
 export function getPendingOrder(empresaSlug) {
   return empresaSlug ? readSessionValue(getPendingOrderKey(empresaSlug)) : null;
 }
@@ -59,6 +64,22 @@ export function savePendingOrder(empresaSlug, pedido) {
 export function clearPendingOrder(empresaSlug) {
   if (empresaSlug) {
     removeSessionValue(getPendingOrderKey(empresaSlug));
+  }
+}
+
+export function getCheckoutDraft(scope) {
+  return scope ? readSessionValue(getCheckoutDraftKey(scope)) : null;
+}
+
+export function saveCheckoutDraft(scope, draft) {
+  if (scope && draft) {
+    writeSessionValue(getCheckoutDraftKey(scope), draft);
+  }
+}
+
+export function clearCheckoutDraft(scope) {
+  if (scope) {
+    removeSessionValue(getCheckoutDraftKey(scope));
   }
 }
 
