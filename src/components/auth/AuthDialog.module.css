@@ -126,7 +126,8 @@
   box-shadow: 0 0 0 3px rgba(45, 75, 119, 0.1);
 }
 
-.inputShell input {
+.inputShell input,
+.inputShell select {
   width: 100%;
   border: 0;
   outline: 0;
@@ -134,6 +135,38 @@
   background: transparent;
   font: inherit;
   font-size: 16px;
+}
+
+.inputShell select {
+  min-width: 0;
+  cursor: pointer;
+}
+
+.inputShell select:disabled {
+  cursor: wait;
+  color: var(--color-muted);
+}
+
+.fieldInvalid .inputShell {
+  border-color: var(--color-red-dark);
+  box-shadow: 0 0 0 3px rgba(209, 57, 61, 0.1);
+}
+
+.fieldError {
+  display: block;
+  color: var(--color-red-dark);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.locationError {
+  padding: 10px 12px;
+  border-left: 4px solid var(--color-red-dark);
+  color: var(--color-red-dark);
+  background: rgba(209, 57, 61, 0.08);
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .passwordToggle {
@@ -289,6 +322,15 @@
   flex: 0 0 auto;
   margin: 1px 0 0;
   accent-color: var(--color-red-dark);
+}
+
+.checkboxField.fieldInvalid {
+  color: var(--color-red-dark) !important;
+}
+
+.checkboxField.fieldInvalid input {
+  outline: 2px solid rgba(209, 57, 61, 0.45);
+  outline-offset: 2px;
 }
 
 .accountView {

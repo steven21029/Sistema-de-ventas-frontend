@@ -2,15 +2,42 @@ import { useEffect, useState } from "react";
 import {
   Building2,
   Check,
+  CreditCard,
   Image,
+  KeyRound,
   LoaderCircle,
   Palette,
+  ShieldCheck,
   Settings2,
   Share2,
 } from "lucide-react";
 import { getMyCompany, updateMyCompany } from "../services/adminService";
 import { resolveMediaUrl } from "../services/apiClient";
+import { normalizePhone, PHONE_LENGTH, PHONE_PATTERN } from "../utils/phone";
 import styles from "./AdminApp.module.css";
+
+const PAYMENT_PROVIDERS = [
+  { label: "Simulado", value: "simulado" },
+  { label: "PayPal", value: "paypal" },
+  { label: "Stripe", value: "stripe" },
+  { label: "BAC", value: "bac" },
+  { label: "Otro", value: "otro" },
+];
+
+const PAYMENT_MODES = [
+  { label: "Pruebas", value: "pruebas" },
+  { label: "Produccion", value: "produccion" },
+];
+
+function getCompanyDraft(company) {
+  return {
+    ...(company || {}),
+    pago_en_linea_credencial_secreta: "",
+    pago_en_linea_modo: company?.pago_en_linea_modo || "pruebas",
+    pago_en_linea_proveedor: company?.pago_en_linea_proveedor || "simulado",
+    pago_en_linea_webhook_secreto: "",
+  };
+}
 
 function errorMessage(error) {
   const payload = error?.payload;
@@ -39,7 +66,7 @@ export default function CompanySettingsPage({ empresaSlug, onCompanyUpdated }) {
       .then((payload) => {
         if (!active) return;
         setCompany(payload);
-        setDraft(payload);
+        setDraft(getCompanyDraft(payload));
       })
       .catch((requestError) => active && setError(errorMessage(requestError)))
       .finally(() => active && setLoading(false));
@@ -47,7 +74,10 @@ export default function CompanySettingsPage({ empresaSlug, onCompanyUpdated }) {
   }, [empresaSlug]);
 
   function update(name, value) {
-    setDraft((current) => ({ ...current, [name]: value }));
+    setDraft((current) => ({
+      ...current,
+      [name]: name === "telefono" ? normalizePhone(value) : value,
+    }));
     setSaved(false);
   }
 
@@ -62,18 +92,27 @@ export default function CompanySettingsPage({ empresaSlug, onCompanyUpdated }) {
       "color_acento", "color_texto", "color_fondo", "telefono", "correo",
       "direccion", "sitio_web", "instagram_url", "whatsapp_url",
       "facebook_url", "tiktok_url", "tiene_envios", "cobra_impuesto",
-      "productos_con_imagen",
+      "productos_con_imagen", "pago_en_linea_activo",
+      "pago_en_linea_proveedor", "pago_en_linea_modo",
+      "pago_en_linea_credencial_publica",
     ].forEach((key) => {
-      const value = draft[key];
+      const value = key === "telefono" ? normalizePhone(draft[key]) : draft[key];
       if (value !== undefined && value !== null) formData.append(key, String(value));
     });
     if (logoFile) formData.append("logo", logoFile);
     if (branchImageFile) formData.append("imagen_sucursales", branchImageFile);
+    [
+      "pago_en_linea_credencial_secreta",
+      "pago_en_linea_webhook_secreto",
+    ].forEach((key) => {
+      const value = String(draft[key] || "").trim();
+      if (value) formData.append(key, value);
+    });
 
     try {
       const payload = await updateMyCompany(empresaSlug, formData);
       setCompany(payload);
-      setDraft(payload);
+      setDraft(getCompanyDraft(payload));
       setLogoFile(null);
       setBranchImageFile(null);
       setSaved(true);
@@ -87,6 +126,7 @@ export default function CompanySettingsPage({ empresaSlug, onCompanyUpdated }) {
 
   if (loading) return <div className={styles.fullPageLoading}><LoaderCircle className={styles.spin} size={24} /><strong>Cargando configuracion</strong></div>;
   if (!company) return <div className={styles.inlineError}>{error || "No se encontro la empresa."}</div>;
+  const usesSimulatedPayment = draft.pago_en_linea_proveedor === "simulado";
 
   return (
     <section className={styles.settingsPage}>
@@ -98,7 +138,7 @@ export default function CompanySettingsPage({ empresaSlug, onCompanyUpdated }) {
           <header><Building2 size={20} /><div><h2>Datos de la empresa</h2><p>Informacion visible para clientes y documentos.</p></div></header>
           <div className={styles.settingsGrid}>
             <label><span>Nombre</span><input onChange={(event) => update("nombre", event.target.value)} required value={draft.nombre || ""} /></label>
-            <label><span>Telefono</span><input onChange={(event) => update("telefono", event.target.value)} value={draft.telefono || ""} /></label>
+            <label><span>Telefono</span><input autoComplete="tel" inputMode="numeric" maxLength={PHONE_LENGTH} onChange={(event) => update("telefono", event.target.value)} pattern={PHONE_PATTERN} type="text" value={normalizePhone(draft.telefono)} /></label>
             <label><span>Correo</span><input onChange={(event) => update("correo", event.target.value)} type="email" value={draft.correo || ""} /></label>
             <label><span>Sitio web</span><input onChange={(event) => update("sitio_web", event.target.value)} type="url" value={draft.sitio_web || ""} /></label>
             <label className={styles.settingsWide}><span>Direccion</span><textarea onChange={(event) => update("direccion", event.target.value)} rows="3" value={draft.direccion || ""} /></label>
@@ -143,6 +183,49 @@ export default function CompanySettingsPage({ empresaSlug, onCompanyUpdated }) {
               ["cobra_impuesto", "Cobrar impuesto", "El servidor aplicara la tasa configurada."],
               ["productos_con_imagen", "Imagenes por producto", "Reserva imagen individual en el catalogo."],
             ].map(([key, label, help]) => <label key={key}><span><strong>{label}</strong><small>{help}</small></span><input checked={draft[key] === true} onChange={(event) => update(key, event.target.checked)} type="checkbox" /><i /></label>)}
+          </div>
+        </section>
+
+        <section className={styles.settingsSection}>
+          <header><CreditCard size={20} /><div><h2>Pago en linea</h2><p>Proveedor y credenciales utilizadas para iniciar cobros desde la tienda.</p></div></header>
+          <div className={`${styles.ruleToggles} ${styles.paymentToggleGrid}`}>
+            <label>
+              <span><strong>Habilitar pago en linea</strong><small>La opcion publica solo aparecera cuando el servidor confirme que la configuracion esta completa.</small></span>
+              <input checked={draft.pago_en_linea_activo === true} onChange={(event) => update("pago_en_linea_activo", event.target.checked)} type="checkbox" />
+              <i />
+            </label>
+          </div>
+          <div className={styles.settingsGrid}>
+            <label>
+              <span>Proveedor</span>
+              <select onChange={(event) => update("pago_en_linea_proveedor", event.target.value)} value={draft.pago_en_linea_proveedor || "simulado"}>
+                {PAYMENT_PROVIDERS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>Modo</span>
+              <select onChange={(event) => update("pago_en_linea_modo", event.target.value)} value={draft.pago_en_linea_modo || "pruebas"}>
+                {PAYMENT_MODES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </label>
+            <label className={styles.settingsWide}>
+              <span>Credencial publica</span>
+              <input autoComplete="off" onChange={(event) => update("pago_en_linea_credencial_publica", event.target.value)} placeholder="Client ID o Merchant ID" value={draft.pago_en_linea_credencial_publica || ""} />
+            </label>
+            <label>
+              <span>Credencial secreta</span>
+              <input autoComplete="new-password" onChange={(event) => update("pago_en_linea_credencial_secreta", event.target.value)} placeholder={company.pago_en_linea_credencial_secreta_configurada ? "Configurada; escribe solo para reemplazar" : "Sin configurar"} type="password" value={draft.pago_en_linea_credencial_secreta || ""} />
+              <small className={styles.credentialState}><KeyRound size={13} />{draft.pago_en_linea_credencial_secreta ? "Nueva credencial pendiente de guardar" : usesSimulatedPayment ? "No requerida para el proveedor simulado" : company.pago_en_linea_credencial_secreta_configurada ? "Credencial configurada" : "Credencial pendiente"}</small>
+            </label>
+            <label>
+              <span>Secreto del webhook</span>
+              <input autoComplete="new-password" onChange={(event) => update("pago_en_linea_webhook_secreto", event.target.value)} placeholder={company.pago_en_linea_webhook_secreto_configurado ? "Configurado; escribe solo para reemplazar" : "Sin configurar"} type="password" value={draft.pago_en_linea_webhook_secreto || ""} />
+              <small className={styles.credentialState}><KeyRound size={13} />{draft.pago_en_linea_webhook_secreto ? "Nuevo secreto pendiente de guardar" : usesSimulatedPayment ? "No requerido para el proveedor simulado" : company.pago_en_linea_webhook_secreto_configurado ? "Webhook configurado" : "Webhook pendiente"}</small>
+            </label>
+          </div>
+          <div className={styles.paymentAvailability} data-available={company.pago_en_linea_disponible === true}>
+            <ShieldCheck size={18} />
+            <span><strong>{company.pago_en_linea_disponible === true ? "Disponible en la tienda" : "No disponible en la tienda"}</strong><small>Estado confirmado por el servidor con la configuracion guardada.</small></span>
           </div>
         </section>
 

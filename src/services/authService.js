@@ -6,6 +6,7 @@ import {
   refreshApiAccessToken,
   setApiAccessToken,
 } from "./apiClient";
+import { normalizePhone } from "../utils/phone";
 
 export async function loginUsuario(email, password, recordarme = false) {
   const payload = await apiPost(
@@ -27,8 +28,10 @@ export async function loginUsuario(email, password, recordarme = false) {
 export async function registrarComprador({
   aceptaPrivacidad,
   aceptaTerminos,
+  departamentoId,
   email,
   empresaSlug,
+  municipioId,
   nombreCompleto,
   numeroIdentidad,
   password,
@@ -39,8 +42,10 @@ export async function registrarComprador({
     empresa_slug: empresaSlug,
     nombre_completo: nombreCompleto.replace(/[^\p{L} ]/gu, "").trim(),
     email: email.trim(),
-    telefono: telefono.replace(/\D/g, ""),
+    telefono: normalizePhone(telefono),
     numero_identidad: numeroIdentidad.replace(/\D/g, "").slice(0, 13),
+    departamento_id: Number(departamentoId),
+    municipio_id: Number(municipioId),
     password,
     password_confirmacion: passwordConfirmacion,
     acepta_terminos: aceptaTerminos === true,

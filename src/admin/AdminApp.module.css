@@ -940,6 +940,7 @@
 .adjustDialog input,
 .adjustDialog textarea,
 .settingsGrid input,
+.settingsGrid select,
 .settingsGrid textarea,
 .mediaSettings input {
   width: 100%;
@@ -2307,6 +2308,60 @@
   color: var(--admin-muted);
   font-size: 10px;
   line-height: 1.35;
+}
+
+.paymentToggleGrid {
+  grid-template-columns: minmax(0, 1fr);
+  padding-bottom: 0;
+}
+
+.credentialState {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--admin-muted);
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.credentialState svg {
+  flex: 0 0 auto;
+  color: var(--admin-accent);
+}
+
+.paymentAvailability {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 18px 18px;
+  padding: 11px 12px;
+  border-left: 4px solid var(--admin-warning);
+  color: #7a4b08;
+  background: #fff8e8;
+}
+
+.paymentAvailability[data-available="true"] {
+  border-left-color: var(--admin-success);
+  color: #17623d;
+  background: #edf9f2;
+}
+
+.paymentAvailability > svg {
+  flex: 0 0 auto;
+}
+
+.paymentAvailability > span {
+  display: grid;
+  gap: 2px;
+}
+
+.paymentAvailability strong {
+  font-size: 12px;
+}
+
+.paymentAvailability small {
+  font-size: 10px;
 }
 
 .settingsFooter {

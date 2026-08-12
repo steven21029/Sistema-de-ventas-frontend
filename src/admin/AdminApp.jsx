@@ -16,6 +16,7 @@ import {
   LogOut,
   Mail,
   MapPin,
+  MapPinned,
   Menu,
   Package,
   PanelLeftClose,
@@ -77,6 +78,7 @@ const NAVIGATION_GROUPS = [
   {
     label: "Empresa",
     items: [
+      { key: "ciudades", label: "Ciudades", icon: MapPinned },
       { key: "sucursales", label: "Sucursales", icon: MapPin },
       { key: "sobre-nosotros", label: "Sobre nosotros", icon: BookOpen },
       { key: "menu", label: "Menu de la tienda", icon: ListTree },
@@ -114,7 +116,7 @@ function loginErrorMessage(error) {
   const payload = error?.payload;
   if (payload?.detail) return payload.detail;
   if (payload?.non_field_errors) return payload.non_field_errors.join(" ");
-  return "No se pudo iniciar sesion. Revisa el correo y la contrasena.";
+  return "No se pudo iniciar sesion. Revisa el correo y la contraseña.";
 }
 
 function AdminLogin({ accessError, isChecking, onLogin }) {
@@ -148,7 +150,7 @@ function AdminLogin({ accessError, isChecking, onLogin }) {
           <header><span>Acceso seguro</span><h2>Inicia sesion</h2><p>Usa la cuenta administrativa asignada por tu empresa.</p></header>
           {(error || accessError) ? <div className={styles.loginError}>{error || accessError}</div> : null}
           <label><span>Correo</span><input autoComplete="email" onChange={(event) => setEmail(event.target.value)} required type="email" value={email} /></label>
-          <label><span>Contrasena</span><input autoComplete="current-password" onChange={(event) => setPassword(event.target.value)} required type="password" value={password} /></label>
+          <label><span>Contraseña</span><input autoComplete="current-password" onChange={(event) => setPassword(event.target.value)} required type="password" value={password} /></label>
           <button className={styles.loginButton} disabled={loading || isChecking} type="submit">{loading || isChecking ? <LoaderCircle className={styles.spin} size={18} /> : null}{loading ? "Verificando..." : "Entrar al panel"}</button>
           <a href="/">Volver a la tienda <ExternalLink size={14} /></a>
         </form>

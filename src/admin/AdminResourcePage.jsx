@@ -32,6 +32,7 @@ import {
   getAdminPaymentStatus,
 } from "../utils/paymentStatus";
 import { getApiErrorMessage } from "../utils/apiError";
+import { normalizePhone } from "../utils/phone";
 import styles from "./AdminApp.module.css";
 
 const currencyFormatter = new Intl.NumberFormat("es-HN", {
@@ -117,6 +118,14 @@ function getStatusLabel(value, type) {
   return value ? "Activo" : "Inactivo";
 }
 
+function getBranchStatus(value) {
+  return {
+    activa: { label: "Activa", tone: "true" },
+    temporalmente_cerrada: { label: "Temporalmente cerrada", tone: "pendiente" },
+    inactiva: { label: "Inactiva", tone: "false" },
+  }[normalizeValue(value)] || { label: value || "Sin estado", tone: "false" };
+}
+
 function CellValue({ column, item }) {
   const value = item?.[column.key];
 
@@ -159,6 +168,16 @@ function CellValue({ column, item }) {
     );
   }
 
+  if (column.type === "branchStatus") {
+    const branchStatus = getBranchStatus(value);
+    return (
+      <span className={`${styles.status} ${styles[`status_${branchStatus.tone}`] || ""}`}>
+        <span />
+        {branchStatus.label}
+      </span>
+    );
+  }
+
   if (column.type === "verified") {
     return <span className={value ? styles.verified : styles.unverified}>{value ? "Verificado" : "Pendiente"}</span>;
   }
@@ -182,6 +201,9 @@ function getInitialDraft(config, item, optionData) {
   const draft = { ...(config.initialValues || {}), ...(item || {}) };
 
   config.fields?.forEach((field) => {
+    if (field.phone) {
+      draft[field.name] = normalizePhone(draft[field.name]);
+    }
     if (field.type === "file") {
       draft[field.name] = null;
     }
@@ -231,6 +253,8 @@ function buildPayload(config, draft) {
     if (field.name === "password" && !draft[field.name]) return;
 
     let value = draft[field.name];
+    if (field.phone) value = normalizePhone(value);
+    if (field.trim && typeof value === "string") value = value.trim();
     if (field.type === "datetime-local") value = value ? new Date(value).toISOString() : null;
     if (["number"].includes(field.type) && value === "") value = null;
     payload[field.name] = value ?? "";
@@ -403,7 +427,7 @@ function FormField({ context, draft, error, field, onChange, optionData }) {
           <option value="">Seleccionar...</option>
           {options.map((option) => {
             const optionValue = option.value ?? option.id;
-            const optionLabel = option.label ?? option.nombre;
+            const optionLabel = field.optionLabel?.(option) ?? option.label ?? option.nombre;
             return <option key={optionValue} value={optionValue}>{optionLabel}</option>;
           })}
         </select>
@@ -412,9 +436,17 @@ function FormField({ context, draft, error, field, onChange, optionData }) {
       ) : (
         <input
           id={inputId}
+          inputMode={field.inputMode}
           max={field.max}
+          maxLength={field.maxLength}
           min={field.min}
-          onChange={(event) => onChange(field.name, event.target.value)}
+          onChange={(event) =>
+            onChange(
+              field.name,
+              field.phone ? normalizePhone(event.target.value) : event.target.value,
+            )
+          }
+          pattern={field.pattern}
           placeholder={field.placeholder}
           required={field.required || (field.createRequired && !draft.id)}
           step={field.step}
@@ -554,6 +586,8 @@ export default function AdminResourcePage({ config, context, empresaSlug, onData
           categorias: "/catalogo/categorias/",
           productos: "/catalogo/productos/",
           paquetes: "/catalogo/paquetes/",
+          departamentos: "/ubicaciones/departamentos/",
+          municipios: "/ubicaciones/municipios/",
         }[source];
         const records = await listAllAdminResource(sourceConfig, empresaSlug, {
           incluir_inactivos: false,
@@ -915,7 +949,7 @@ export default function AdminResourcePage({ config, context, empresaSlug, onData
                         {canManageBranchOrderPayment(config, item) ? <button aria-label="Ir a confirmar pago en sucursal" className={styles.confirmIconButton} onClick={() => manageBranchOrderPayment(item)} title="Ir a confirmar pago en sucursal" type="button"><BadgeCheck size={17} /></button> : null}
                         {canConfirmBranchPayment(config, item) ? <button aria-label="Confirmar cobro en sucursal" className={styles.confirmIconButton} onClick={() => openBranchConfirmation(item)} title="Confirmar cobro en sucursal" type="button"><BadgeCheck size={17} /></button> : null}
                         {canCancelPendingOrder(config, item) ? <button aria-label="Cancelar pedido pendiente" className={styles.dangerIconButton} onClick={() => openCancellation(item)} title="Cancelar pedido pendiente" type="button"><Ban size={17} /></button> : null}
-                        {config.statusField && !config.readOnly && config.key !== "contactos" ? <button aria-label={item[config.statusField] ? "Desactivar" : "Activar"} onClick={() => toggleStatus(item)} title={item[config.statusField] ? "Desactivar" : "Activar"} type="button"><Power size={17} /></button> : null}
+                        {config.statusField && config.statusToggle !== false && !config.readOnly && config.key !== "contactos" ? <button aria-label={item[config.statusField] ? "Desactivar" : "Activar"} onClick={() => toggleStatus(item)} title={item[config.statusField] ? "Desactivar" : "Activar"} type="button"><Power size={17} /></button> : null}
                         {canDelete ? <button aria-label="Eliminar" className={styles.dangerIconButton} onClick={() => setDeleteTarget(item)} title="Eliminar" type="button"><Trash2 size={17} /></button> : null}
                       </td>
                     </tr>

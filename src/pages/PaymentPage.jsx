@@ -91,7 +91,13 @@ function saveFile(blob, filename) {
   globalThis.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
 }
 
-function PaymentPage({ hasDelivery, onContinueShopping, onNavigatePayment, reference }) {
+function PaymentPage({
+  canPayOnline,
+  hasDelivery,
+  onContinueShopping,
+  onNavigatePayment,
+  reference,
+}) {
   const [payment, setPayment] = useState(null);
   const [feedback, setFeedback] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -166,6 +172,12 @@ function PaymentPage({ hasDelivery, onContinueShopping, onNavigatePayment, refer
   }, [payment?.estado, reference]);
 
   async function handleRetry() {
+    if (!canPayOnline) {
+      setFeedback("El pago en linea no esta disponible para esta empresa.");
+      setFeedbackTone("error");
+      return;
+    }
+
     const context = getPaymentContext(reference);
 
     if (!context?.pedidoId) {
@@ -377,7 +389,7 @@ function PaymentPage({ hasDelivery, onContinueShopping, onNavigatePayment, refer
                   {isResending ? "Enviando" : "Reenviar por correo"}
                 </button>
               ) : null}
-              {payment.estado === "rechazado" && !branchPayment && (
+              {payment.estado === "rechazado" && !branchPayment && canPayOnline && (
                 <button
                   className={styles.providerButton}
                   type="button"

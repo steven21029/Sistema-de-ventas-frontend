@@ -160,6 +160,10 @@
   overflow: hidden;
 }
 
+.singlePaymentMethod {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .deliverySwitch label,
 .paymentMethodSwitch label {
   min-height: 54px;

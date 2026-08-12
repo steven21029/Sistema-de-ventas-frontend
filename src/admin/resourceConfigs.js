@@ -15,6 +15,12 @@ const userRoleOptions = [
   { value: "comprador", label: "Comprador" },
 ];
 
+const branchStatusOptions = [
+  { value: "activa", label: "Activa" },
+  { value: "temporalmente_cerrada", label: "Temporalmente cerrada" },
+  { value: "inactiva", label: "Inactiva" },
+];
+
 const commonImageFields = [
   {
     name: "imagen_url",
@@ -31,6 +37,14 @@ const commonImageFields = [
     full: true,
   },
 ];
+
+const phoneFieldProps = {
+  inputMode: "numeric",
+  maxLength: 8,
+  pattern: "[0-9]{8}",
+  phone: true,
+  type: "text",
+};
 
 export function getResourceConfigs(context) {
   const company = context?.empresa_actual || {};
@@ -214,24 +228,66 @@ export function getResourceConfigs(context) {
       ],
       initialValues: { orden: 1, activo: true },
     },
+    ciudades: {
+      key: "ciudades",
+      title: "Ciudades",
+      singular: "ciudad",
+      description: isSuperuser
+        ? "Catalogo nacional de municipios disponibles para las sucursales."
+        : "Catalogo nacional de municipios. Solo un superusuario puede modificarlo.",
+      path: "/ubicaciones/municipios/",
+      statusField: "activo",
+      order: "nombre",
+      dependencies: ["departamentos"],
+      readOnly: !isSuperuser,
+      ...(!isSuperuser
+        ? { detailFields: ["codigo", "nombre", "departamento", "orden", "activo"] }
+        : {}),
+      columns: [
+        { key: "nombre", label: "Ciudad", type: "primary", secondaryKey: "codigo" },
+        { key: "departamento", label: "Departamento" },
+        { key: "orden", label: "Orden", type: "number" },
+        { key: "activo", label: "Estado", type: "status" },
+      ],
+      fields: [
+        { name: "codigo", label: "Codigo", inputMode: "numeric", maxLength: 4, pattern: "[0-9]{4}", required: true },
+        { name: "nombre", label: "Nombre", required: true, trim: true },
+        { name: "departamento_id", label: "Departamento", type: "select", source: "departamentos", required: true },
+        { name: "orden", label: "Orden", type: "number", min: 1, required: true },
+        { name: "activo", label: "Ciudad activa", type: "switch", full: true },
+      ],
+      initialValues: { activo: true },
+    },
     sucursales: {
       key: "sucursales",
       title: "Sucursales",
       singular: "sucursal",
       description: "Puntos de atencion, horarios y ubicaciones publicadas.",
       path: "/empresas/sucursales/",
-      statusField: "activa",
+      statusField: "estado",
+      statusToggle: false,
       order: "orden",
+      dependencies: ["municipios"],
       columns: [
         { key: "imagen_final", label: "Imagen", type: "image" },
         { key: "nombre", label: "Sucursal", type: "primary", secondaryKey: "direccion" },
+        { key: "ciudad", label: "Ciudad" },
+        { key: "departamento", label: "Departamento" },
         { key: "telefono", label: "Telefono" },
         { key: "horario", label: "Horario" },
-        { key: "activa", label: "Estado", type: "status" },
+        { key: "estado", label: "Estado", type: "branchStatus" },
       ],
       fields: [
         { name: "nombre", label: "Nombre", required: true },
-        { name: "telefono", label: "Telefono" },
+        {
+          name: "municipio_id",
+          label: "Ciudad",
+          type: "select",
+          source: "municipios",
+          optionLabel: (option) => `${option.nombre} - ${option.departamento}`,
+          required: true,
+        },
+        { name: "telefono", label: "Telefono", ...phoneFieldProps },
         { name: "direccion", label: "Direccion", type: "textarea", full: true },
         { name: "horario", label: "Horario", full: true },
         { name: "google_maps_url", label: "Enlace de Google Maps", type: "url", full: true },
@@ -239,9 +295,9 @@ export function getResourceConfigs(context) {
         { name: "longitud", label: "Longitud", type: "number", step: "any" },
         { name: "orden", label: "Orden", type: "number", min: 1 },
         ...commonImageFields,
-        { name: "activa", label: "Sucursal activa", type: "switch", full: true },
+        { name: "estado", label: "Estado", type: "select", options: branchStatusOptions, required: true },
       ],
-      initialValues: { orden: 1, activa: true },
+      initialValues: { orden: 1, estado: "activa" },
     },
     banners: {
       key: "banners",
@@ -373,9 +429,9 @@ export function getResourceConfigs(context) {
         { name: "email", label: "Correo", type: "email", required: true },
         { name: "first_name", label: "Nombre" },
         { name: "last_name", label: "Apellido" },
-        { name: "password", label: "Contrasena", type: "password", full: true, createRequired: true, placeholder: "Solo se cambia si escribes una nueva" },
+        { name: "password", label: "Contraseña", type: "password", full: true, createRequired: true, placeholder: "Solo se cambia si escribes una nueva" },
         { name: "rol", label: "Rol", type: "select", options: availableUserRoles, required: true },
-        { name: "telefono", label: "Telefono" },
+        { name: "telefono", label: "Telefono", ...phoneFieldProps },
         { name: "numero_identidad", label: "Identidad", placeholder: "13 digitos" },
         ...(isSuperuser
           ? [
@@ -495,7 +551,7 @@ export function getResourceConfigs(context) {
         { name: "slug", label: "Slug" },
         { name: "subdominio", label: "Subdominio" },
         { name: "dominio_personalizado", label: "Dominio personalizado", full: true },
-        { name: "telefono", label: "Telefono" },
+        { name: "telefono", label: "Telefono", ...phoneFieldProps },
         { name: "correo", label: "Correo", type: "email" },
         { name: "direccion", label: "Direccion", type: "textarea", full: true },
         { name: "sitio_web", label: "Sitio web", type: "url", full: true },

@@ -8,6 +8,7 @@ import {
   LockKeyhole,
   LogOut,
   Mail,
+  MapPin,
   Phone,
   ShieldCheck,
   UserRound,
@@ -15,14 +16,21 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import {
+  getActiveDepartments,
+  getActiveMunicipalities,
+} from "../../services/locationService";
 import { getApiErrorMessage } from "../../utils/apiError";
 import { clearAuthFlow, getAuthFlow, saveAuthFlow } from "../../utils/authFlow";
+import { normalizePhone, PHONE_LENGTH, PHONE_PATTERN } from "../../utils/phone";
 import styles from "./AuthDialog.module.css";
 
 const INITIAL_REGISTER_FORM = {
   aceptaPrivacidad: false,
   aceptaTerminos: false,
+  departamentoId: "",
   email: "",
+  municipioId: "",
   nombreCompleto: "",
   numeroIdentidad: "",
   password: "",
@@ -34,6 +42,98 @@ const EMPTY_FEEDBACK = {
   message: "",
   type: "error",
 };
+
+const REGISTER_FIELD_ORDER = [
+  "nombreCompleto",
+  "email",
+  "telefono",
+  "numeroIdentidad",
+  "departamentoId",
+  "municipioId",
+  "password",
+  "passwordConfirmacion",
+  "aceptaTerminos",
+  "aceptaPrivacidad",
+];
+
+const REGISTER_API_FIELDS = {
+  acepta_privacidad: "aceptaPrivacidad",
+  acepta_terminos: "aceptaTerminos",
+  departamento_id: "departamentoId",
+  email: "email",
+  municipio_id: "municipioId",
+  nombre_completo: "nombreCompleto",
+  numero_identidad: "numeroIdentidad",
+  password: "password",
+  password_confirmacion: "passwordConfirmacion",
+  telefono: "telefono",
+};
+
+function getErrorText(value) {
+  if (Array.isArray(value)) {
+    return value.map(getErrorText).filter(Boolean).join(" ");
+  }
+
+  if (typeof value === "string") {
+    return value.trim();
+  }
+
+  return "";
+}
+
+function getRegisterApiErrors(error) {
+  const payload = error?.payload;
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(REGISTER_API_FIELDS)
+      .map(([apiField, formField]) => [formField, getErrorText(payload[apiField])])
+      .filter(([, message]) => message),
+  );
+}
+
+function validateRegisterForm(form) {
+  const errors = {};
+
+  if (!form.nombreCompleto.trim()) errors.nombreCompleto = "Escribe tu nombre completo.";
+  if (!form.email.trim()) errors.email = "Escribe tu correo.";
+  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+    errors.email = "Escribe un correo valido.";
+  }
+  if (form.telefono.length !== PHONE_LENGTH) {
+    errors.telefono = `El telefono debe tener ${PHONE_LENGTH} digitos.`;
+  }
+  if (form.numeroIdentidad.length !== 13) {
+    errors.numeroIdentidad = "La identidad debe tener 13 digitos.";
+  }
+  if (!form.departamentoId) errors.departamentoId = "Selecciona un departamento.";
+  if (!form.municipioId) errors.municipioId = "Selecciona un municipio.";
+  if (!form.password) errors.password = "Escribe una contraseña.";
+  if (!form.passwordConfirmacion) {
+    errors.passwordConfirmacion = "Confirma tu contraseña.";
+  } else if (form.password !== form.passwordConfirmacion) {
+    errors.passwordConfirmacion = "Las contraseñas no coinciden.";
+  }
+  if (!form.aceptaTerminos) {
+    errors.aceptaTerminos = "Debes aceptar los terminos y condiciones.";
+  }
+  if (!form.aceptaPrivacidad) {
+    errors.aceptaPrivacidad = "Debes aceptar la politica de privacidad.";
+  }
+
+  return errors;
+}
+
+function focusFirstRegisterError(formElement, errors) {
+  const firstField = REGISTER_FIELD_ORDER.find((field) => errors[field]);
+  if (!firstField) return;
+
+  globalThis.requestAnimationFrame(() => {
+    formElement?.elements?.namedItem(firstField)?.focus();
+  });
+}
 
 function getInitialAuthFlow() {
   const flow = getAuthFlow() || {};
@@ -49,6 +149,10 @@ function getInitialAuthFlow() {
       ...INITIAL_REGISTER_FORM,
       aceptaPrivacidad: storedForm.aceptaPrivacidad === true,
       aceptaTerminos: storedForm.aceptaTerminos === true,
+      departamentoId:
+        storedForm.departamentoId === undefined || storedForm.departamentoId === null
+          ? ""
+          : String(storedForm.departamentoId),
       email: typeof storedForm.email === "string" ? storedForm.email : "",
       nombreCompleto:
         typeof storedForm.nombreCompleto === "string"
@@ -58,9 +162,13 @@ function getInitialAuthFlow() {
         typeof storedForm.numeroIdentidad === "string"
           ? storedForm.numeroIdentidad.replace(/\D/g, "").slice(0, 13)
           : "",
+      municipioId:
+        storedForm.municipioId === undefined || storedForm.municipioId === null
+          ? ""
+          : String(storedForm.municipioId),
       telefono:
         typeof storedForm.telefono === "string"
-          ? storedForm.telefono.replace(/\D/g, "")
+          ? normalizePhone(storedForm.telefono)
           : "",
     },
     verificationEmail:
@@ -93,7 +201,7 @@ function getResponseMessage(response, fallback) {
 
 function PasswordVisibilityButton({ isVisible, onToggle }) {
   const Icon = isVisible ? EyeOff : Eye;
-  const label = isVisible ? "Ocultar contrasena" : "Mostrar contrasena";
+  const label = isVisible ? "Ocultar contraseña" : "Mostrar contraseña";
 
   return (
     <button
@@ -142,6 +250,12 @@ function AuthDialog({
   const [recoveryPasswordConfirmation, setRecoveryPasswordConfirmation] =
     useState("");
   const [feedback, setFeedback] = useState(EMPTY_FEEDBACK);
+  const [registerErrors, setRegisterErrors] = useState({});
+  const [departments, setDepartments] = useState([]);
+  const [municipalities, setMunicipalities] = useState([]);
+  const [isLoadingDepartments, setIsLoadingDepartments] = useState(false);
+  const [isLoadingMunicipalities, setIsLoadingMunicipalities] = useState(false);
+  const [locationError, setLocationError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
@@ -168,6 +282,8 @@ function AuthDialog({
       setShowRegisterConfirmation(false);
       setShowRecoveryPassword(false);
       setShowRecoveryConfirmation(false);
+      setRegisterErrors({});
+      setLocationError("");
     }
   }, [isOpen]);
 
@@ -186,7 +302,9 @@ function AuthDialog({
       registerForm: {
         aceptaPrivacidad: registerForm.aceptaPrivacidad,
         aceptaTerminos: registerForm.aceptaTerminos,
+        departamentoId: registerForm.departamentoId,
         email: registerForm.email,
+        municipioId: registerForm.municipioId,
         nombreCompleto: registerForm.nombreCompleto,
         numeroIdentidad: registerForm.numeroIdentidad,
         telefono: registerForm.telefono,
@@ -202,13 +320,73 @@ function AuthDialog({
     rememberMe,
     registerForm.aceptaPrivacidad,
     registerForm.aceptaTerminos,
+    registerForm.departamentoId,
     registerForm.email,
+    registerForm.municipioId,
     registerForm.nombreCompleto,
     registerForm.numeroIdentidad,
     registerForm.telefono,
     session,
     verificationEmail,
   ]);
+
+  useEffect(() => {
+    if (!isOpen || mode !== "register" || departments.length > 0) {
+      return undefined;
+    }
+
+    let isActive = true;
+    setIsLoadingDepartments(true);
+    setLocationError("");
+
+    getActiveDepartments()
+      .then((items) => {
+        if (isActive) setDepartments(items);
+      })
+      .catch(() => {
+        if (isActive) {
+          setDepartments([]);
+          setLocationError("No se pudieron cargar los departamentos.");
+        }
+      })
+      .finally(() => {
+        if (isActive) setIsLoadingDepartments(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [departments.length, isOpen, mode]);
+
+  useEffect(() => {
+    if (!isOpen || mode !== "register" || !registerForm.departamentoId) {
+      setMunicipalities([]);
+      setIsLoadingMunicipalities(false);
+      return undefined;
+    }
+
+    let isActive = true;
+    setIsLoadingMunicipalities(true);
+    setLocationError("");
+
+    getActiveMunicipalities(registerForm.departamentoId)
+      .then((items) => {
+        if (isActive) setMunicipalities(items);
+      })
+      .catch(() => {
+        if (isActive) {
+          setMunicipalities([]);
+          setLocationError("No se pudieron cargar los municipios del departamento.");
+        }
+      })
+      .finally(() => {
+        if (isActive) setIsLoadingMunicipalities(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [isOpen, mode, registerForm.departamentoId]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -234,6 +412,32 @@ function AuthDialog({
       ...current,
       [field]: value,
     }));
+    setRegisterErrors((current) => {
+      if (!current[field]) return current;
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+  }
+
+  function updateRegisterDepartment(value) {
+    setRegisterForm((current) => ({
+      ...current,
+      departamentoId: value,
+      municipioId: "",
+    }));
+    setRegisterErrors((current) => {
+      const next = { ...current };
+      delete next.departamentoId;
+      delete next.municipioId;
+      return next;
+    });
+  }
+
+  function getRegisterFieldClass(field, baseClass = "") {
+    return [baseClass, registerErrors[field] ? styles.fieldInvalid : ""]
+      .filter(Boolean)
+      .join(" ");
   }
 
   function showLogin(nextEmail = "") {
@@ -243,6 +447,7 @@ function AuthDialog({
     setShowLoginPassword(false);
     setShowRegisterPassword(false);
     setShowRegisterConfirmation(false);
+    setRegisterErrors({});
     setRecoveryCode("");
     setRecoveryPassword("");
     setRecoveryPasswordConfirmation("");
@@ -260,6 +465,7 @@ function AuthDialog({
     setShowLoginPassword(false);
     setShowRegisterPassword(false);
     setShowRegisterConfirmation(false);
+    setRegisterErrors({});
     setRegisterForm((current) => ({
       ...current,
       email: current.email || email,
@@ -333,7 +539,7 @@ function AuthDialog({
       setFeedback({
         message: getApiErrorMessage(
           error,
-          "No se pudo solicitar la recuperacion de contrasena.",
+          "No se pudo solicitar la recuperacion de contraseña.",
         ),
         type: "error",
       });
@@ -348,7 +554,7 @@ function AuthDialog({
 
     if (recoveryPassword !== recoveryPasswordConfirmation) {
       setFeedback({
-        message: "La nueva contrasena y su confirmacion no coinciden.",
+        message: "La nueva contraseña y su confirmacion no coinciden.",
         type: "error",
       });
       return;
@@ -374,7 +580,7 @@ function AuthDialog({
       setFeedback({
         message: getResponseMessage(
           response,
-          "Contrasena actualizada. Ya puedes iniciar sesion.",
+          "Contraseña actualizada. Ya puedes iniciar sesion.",
         ),
         type: "success",
       });
@@ -382,7 +588,7 @@ function AuthDialog({
       setFeedback({
         message: getApiErrorMessage(
           error,
-          "No se pudo actualizar la contrasena. Revisa el codigo.",
+          "No se pudo actualizar la contraseña. Revisa el codigo.",
         ),
         type: "error",
       });
@@ -417,7 +623,9 @@ function AuthDialog({
 
   async function handleRegisterSubmit(event) {
     event.preventDefault();
+    const formElement = event.currentTarget;
     setFeedback(EMPTY_FEEDBACK);
+    setRegisterErrors({});
 
     if (!empresaSlug) {
       setFeedback({
@@ -427,19 +635,14 @@ function AuthDialog({
       return;
     }
 
-    if (registerForm.password !== registerForm.passwordConfirmacion) {
+    const validationErrors = validateRegisterForm(registerForm);
+    if (Object.keys(validationErrors).length > 0) {
+      setRegisterErrors(validationErrors);
       setFeedback({
-        message: "La contrasena y su confirmacion no coinciden.",
+        message: "Revisa los campos señalados antes de crear la cuenta.",
         type: "error",
       });
-      return;
-    }
-
-    if (!registerForm.aceptaTerminos || !registerForm.aceptaPrivacidad) {
-      setFeedback({
-        message: "Debes aceptar los terminos y la politica de privacidad.",
-        type: "error",
-      });
+      focusFirstRegisterError(formElement, validationErrors);
       return;
     }
 
@@ -457,6 +660,7 @@ function AuthDialog({
       setVerificationEmail(normalizedEmail);
       setVerificationCode("");
       setRegisterForm(INITIAL_REGISTER_FORM);
+      setRegisterErrors({});
       setMode("verify");
       saveAuthFlow({
         email: normalizedEmail,
@@ -471,8 +675,16 @@ function AuthDialog({
         type: "success",
       });
     } catch (error) {
+      const apiFieldErrors = getRegisterApiErrors(error);
+      const hasFieldErrors = Object.keys(apiFieldErrors).length > 0;
+      if (hasFieldErrors) {
+        setRegisterErrors(apiFieldErrors);
+        focusFirstRegisterError(formElement, apiFieldErrors);
+      }
       setFeedback({
-        message: getApiErrorMessage(error, "No se pudo crear la cuenta."),
+        message: hasFieldErrors
+          ? "Revisa los campos señalados por el servidor."
+          : getApiErrorMessage(error, "No se pudo crear la cuenta."),
         type: "error",
       });
     } finally {
@@ -562,7 +774,7 @@ function AuthDialog({
     login: "Iniciar sesion",
     recover: "Recuperar acceso",
     register: "Crear cuenta",
-    reset: "Nueva contrasena",
+    reset: "Nueva contraseña",
     verify: "Activar cuenta",
   }[mode];
   const formEyebrow = {
@@ -688,7 +900,7 @@ function AuthDialog({
 
             {mode === "reset" && (
               <p className={styles.loginCopy}>
-                Ingresa el codigo recibido y crea una nueva contrasena.
+                Ingresa el codigo recibido y crea una nueva contraseña.
               </p>
             )}
 
@@ -715,7 +927,7 @@ function AuthDialog({
                 </label>
 
                 <label>
-                  Contrasena
+                  Contraseña
                   <span className={styles.inputShell}>
                     <LockKeyhole size={18} aria-hidden="true" />
                     <input
@@ -746,7 +958,7 @@ function AuthDialog({
                     type="button"
                     onClick={() => showRecover(email)}
                   >
-                    Olvide mi contrasena
+                    Olvide mi contraseña
                   </button>
                 </div>
 
@@ -852,7 +1064,7 @@ function AuthDialog({
 
                 <div className={styles.fieldGrid}>
                   <label>
-                    Nueva contrasena
+                    Nueva contraseña
                     <span className={styles.inputShell}>
                       <LockKeyhole size={18} aria-hidden="true" />
                       <input
@@ -872,7 +1084,7 @@ function AuthDialog({
                   </label>
 
                   <label>
-                    Confirmar contrasena
+                    Confirmar contraseña
                     <span className={styles.inputShell}>
                       <LockKeyhole size={18} aria-hidden="true" />
                       <input
@@ -905,7 +1117,7 @@ function AuthDialog({
                   type="submit"
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? "Actualizando" : "Cambiar contrasena"}
+                  {isSubmitting ? "Actualizando" : "Cambiar contraseña"}
                 </button>
 
                 <div className={styles.actionsRow}>
@@ -929,12 +1141,14 @@ function AuthDialog({
             )}
 
             {mode === "register" && (
-              <form className={`${styles.form} ${styles.registerForm}`} onSubmit={handleRegisterSubmit}>
-                <label>
+              <form className={`${styles.form} ${styles.registerForm}`} noValidate onSubmit={handleRegisterSubmit}>
+                <label className={getRegisterFieldClass("nombreCompleto")}>
                   Nombre completo
                   <span className={styles.inputShell}>
                     <UserRound size={18} aria-hidden="true" />
                     <input
+                      aria-invalid={Boolean(registerErrors.nombreCompleto)}
+                      name="nombreCompleto"
                       type="text"
                       value={registerForm.nombreCompleto}
                       onChange={(event) =>
@@ -947,14 +1161,17 @@ function AuthDialog({
                       required
                     />
                   </span>
+                  {registerErrors.nombreCompleto && <small className={styles.fieldError}>{registerErrors.nombreCompleto}</small>}
                 </label>
 
                 <div className={styles.fieldGrid}>
-                  <label>
+                  <label className={getRegisterFieldClass("email")}>
                     Correo
                     <span className={styles.inputShell}>
                       <Mail size={18} aria-hidden="true" />
                       <input
+                        aria-invalid={Boolean(registerErrors.email)}
+                        name="email"
                         type="email"
                         value={registerForm.email}
                         onChange={(event) =>
@@ -964,34 +1181,42 @@ function AuthDialog({
                         required
                       />
                     </span>
+                    {registerErrors.email && <small className={styles.fieldError}>{registerErrors.email}</small>}
                   </label>
 
-                  <label>
+                  <label className={getRegisterFieldClass("telefono")}>
                     Telefono
                     <span className={styles.inputShell}>
                       <Phone size={18} aria-hidden="true" />
                       <input
+                        aria-invalid={Boolean(registerErrors.telefono)}
+                        name="telefono"
                         type="text"
                         value={registerForm.telefono}
                         onChange={(event) =>
                           updateRegisterField(
                             "telefono",
-                            event.target.value.replace(/\D/g, ""),
+                            normalizePhone(event.target.value),
                           )
                         }
                         autoComplete="tel"
                         inputMode="numeric"
+                        maxLength={PHONE_LENGTH}
+                        pattern={PHONE_PATTERN}
                         required
                       />
                     </span>
+                    {registerErrors.telefono && <small className={styles.fieldError}>{registerErrors.telefono}</small>}
                   </label>
                 </div>
 
-                <label>
+                <label className={getRegisterFieldClass("numeroIdentidad")}>
                   Numero de identidad
                   <span className={styles.inputShell}>
                     <IdCard size={18} aria-hidden="true" />
                     <input
+                      aria-invalid={Boolean(registerErrors.numeroIdentidad)}
+                      name="numeroIdentidad"
                       type="text"
                       value={registerForm.numeroIdentidad}
                       onChange={(event) =>
@@ -1007,14 +1232,67 @@ function AuthDialog({
                       required
                     />
                   </span>
+                  {registerErrors.numeroIdentidad && <small className={styles.fieldError}>{registerErrors.numeroIdentidad}</small>}
                 </label>
 
                 <div className={styles.fieldGrid}>
-                  <label>
-                    Contrasena
+                  <label className={getRegisterFieldClass("departamentoId")}>
+                    Departamento
+                    <span className={styles.inputShell}>
+                      <MapPin size={18} aria-hidden="true" />
+                      <select
+                        aria-invalid={Boolean(registerErrors.departamentoId)}
+                        disabled={isLoadingDepartments}
+                        name="departamentoId"
+                        onChange={(event) => updateRegisterDepartment(event.target.value)}
+                        required
+                        value={registerForm.departamentoId}
+                      >
+                        <option value="">
+                          {isLoadingDepartments ? "Cargando..." : "Seleccionar departamento"}
+                        </option>
+                        {departments.map((department) => (
+                          <option key={department.id} value={department.id}>{department.nombre}</option>
+                        ))}
+                      </select>
+                    </span>
+                    {registerErrors.departamentoId && <small className={styles.fieldError}>{registerErrors.departamentoId}</small>}
+                  </label>
+
+                  <label className={getRegisterFieldClass("municipioId")}>
+                    Municipio
+                    <span className={styles.inputShell}>
+                      <MapPin size={18} aria-hidden="true" />
+                      <select
+                        aria-invalid={Boolean(registerErrors.municipioId)}
+                        disabled={!registerForm.departamentoId || isLoadingMunicipalities}
+                        name="municipioId"
+                        onChange={(event) => updateRegisterField("municipioId", event.target.value)}
+                        required
+                        value={registerForm.municipioId}
+                      >
+                        <option value="">
+                          {isLoadingMunicipalities ? "Cargando..." : "Seleccionar municipio"}
+                        </option>
+                        {municipalities.map((municipality) => (
+                          <option key={municipality.id} value={municipality.id}>{municipality.nombre}</option>
+                        ))}
+                      </select>
+                    </span>
+                    {registerErrors.municipioId && <small className={styles.fieldError}>{registerErrors.municipioId}</small>}
+                  </label>
+                </div>
+
+                {locationError && <div className={styles.locationError} role="alert">{locationError}</div>}
+
+                <div className={styles.fieldGrid}>
+                  <label className={getRegisterFieldClass("password")}>
+                    Contraseña
                     <span className={styles.inputShell}>
                       <LockKeyhole size={18} aria-hidden="true" />
                       <input
+                        aria-invalid={Boolean(registerErrors.password)}
+                        name="password"
                         type={showRegisterPassword ? "text" : "password"}
                         value={registerForm.password}
                         onChange={(event) =>
@@ -1026,15 +1304,18 @@ function AuthDialog({
                       <PasswordVisibilityButton
                         isVisible={showRegisterPassword}
                         onToggle={() => setShowRegisterPassword((current) => !current)}
-                      />
+                        />
                     </span>
+                    {registerErrors.password && <small className={styles.fieldError}>{registerErrors.password}</small>}
                   </label>
 
-                  <label>
-                    Confirmar contrasena
+                  <label className={getRegisterFieldClass("passwordConfirmacion")}>
+                    Confirmar contraseña
                     <span className={styles.inputShell}>
                       <LockKeyhole size={18} aria-hidden="true" />
                       <input
+                        aria-invalid={Boolean(registerErrors.passwordConfirmacion)}
+                        name="passwordConfirmacion"
                         type={showRegisterConfirmation ? "text" : "password"}
                         value={registerForm.passwordConfirmacion}
                         onChange={(event) =>
@@ -1051,13 +1332,16 @@ function AuthDialog({
                         onToggle={() =>
                           setShowRegisterConfirmation((current) => !current)
                         }
-                      />
+                        />
                     </span>
+                    {registerErrors.passwordConfirmacion && <small className={styles.fieldError}>{registerErrors.passwordConfirmacion}</small>}
                   </label>
                 </div>
 
-                <label className={styles.checkboxField}>
+                <label className={getRegisterFieldClass("aceptaTerminos", styles.checkboxField)}>
                   <input
+                    aria-invalid={Boolean(registerErrors.aceptaTerminos)}
+                    name="aceptaTerminos"
                     type="checkbox"
                     checked={registerForm.aceptaTerminos}
                     onChange={(event) =>
@@ -1065,11 +1349,16 @@ function AuthDialog({
                     }
                     required
                   />
-                  <span>Acepto los terminos y condiciones.</span>
+                  <span>
+                    Acepto los terminos y condiciones.
+                    {registerErrors.aceptaTerminos && <small className={styles.fieldError}>{registerErrors.aceptaTerminos}</small>}
+                  </span>
                 </label>
 
-                <label className={styles.checkboxField}>
+                <label className={getRegisterFieldClass("aceptaPrivacidad", styles.checkboxField)}>
                   <input
+                    aria-invalid={Boolean(registerErrors.aceptaPrivacidad)}
+                    name="aceptaPrivacidad"
                     type="checkbox"
                     checked={registerForm.aceptaPrivacidad}
                     onChange={(event) =>
@@ -1077,7 +1366,10 @@ function AuthDialog({
                     }
                     required
                   />
-                  <span>Acepto la politica de privacidad.</span>
+                  <span>
+                    Acepto la politica de privacidad.
+                    {registerErrors.aceptaPrivacidad && <small className={styles.fieldError}>{registerErrors.aceptaPrivacidad}</small>}
+                  </span>
                 </label>
 
                 {feedback.message && (

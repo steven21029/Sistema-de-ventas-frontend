@@ -2,6 +2,7 @@ import { Mail, Phone, Send } from "lucide-react";
 import { useState } from "react";
 import SocialLinks from "../components/social/SocialLinks";
 import { enviarMensajeContacto } from "../services/paginasService";
+import { normalizePhone, PHONE_LENGTH, PHONE_PATTERN } from "../utils/phone";
 import styles from "./DynamicPages.module.css";
 
 const EMPTY_FORM = {
@@ -41,7 +42,7 @@ function ContactPage({ empresa, empresaSlug, title }) {
       const response = await enviarMensajeContacto({
         empresa_slug: empresaSlug,
         nombre: form.nombre.trim(),
-        telefono: form.telefono.trim(),
+        telefono: normalizePhone(form.telefono),
         correo: form.correo.trim(),
         asunto: form.asunto.trim(),
         mensaje: form.mensaje.trim(),
@@ -99,9 +100,15 @@ function ContactPage({ empresa, empresaSlug, title }) {
           <label className={styles.field}>
             Telefono
             <input
-              type="tel"
+              type="text"
               value={form.telefono}
-              onChange={(event) => updateField("telefono", event.target.value)}
+              onChange={(event) =>
+                updateField("telefono", normalizePhone(event.target.value))
+              }
+              autoComplete="tel"
+              inputMode="numeric"
+              maxLength={PHONE_LENGTH}
+              pattern={PHONE_PATTERN}
             />
           </label>
           <label className={styles.field}>

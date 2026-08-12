@@ -36,7 +36,7 @@ Reglas de precedencia:
 | Promociones, sucursales y contacto | Implementado | Ofertas, ubicaciones, Google Maps, redes sociales y formulario de contacto | Validar URLs, accesibilidad y flujo con datos reales de cada empresa |
 | Sobre nosotros | Implementado | Plantilla publica y editor administrativo por empresa | Validar contenido e imagen final de cada empresa |
 | Inicio y cierre de sesion | Implementado | JWT, access token en memoria, refresh `HttpOnly`, restauracion y logout | Pruebas automatizadas de expiracion y concurrencia de requests |
-| Registro y recuperacion | Implementado | Registro, verificacion, reenvio y recuperacion de contrasena por codigo desde Mi cuenta | Pruebas E2E del alta y recuperacion con correo real |
+| Registro y recuperacion | Implementado | Registro, verificacion, reenvio y recuperacion de contraseña por codigo desde Mi cuenta | Pruebas E2E del alta y recuperacion con correo real |
 | Favoritos | Implementado | Persistencia por usuario/empresa y paso al carrito | Pruebas de cambio de empresa, articulo inactivo y sesion expirada |
 | Carrito | Parcial | Invitado en `localStorage`, autenticado en backend, calculo de precios e inventario | Resolver y verificar definitivamente la fusion invitado -> usuario |
 | Checkout y pedidos | Implementado con pendientes | Retiro, envio local/nacional, pedido congelado y reintento de pago | Tarifa real de envio, QA de errores y portal del comprador |
@@ -189,6 +189,7 @@ Rutas del proceso de compra:
 /administracion/pagos
 /administracion/inventario
 /administracion/contactos
+/administracion/ciudades
 /administracion/sucursales
 /administracion/sobre-nosotros
 /administracion/menu
@@ -326,7 +327,11 @@ Archivo: `src/pages/PromotionsPage.jsx`.
 
 Archivo: `src/pages/BranchesPage.jsx`.
 
-- Nombre, imagen, direccion, telefono y horario.
+- Nombre, ciudad, imagen, direccion, telefono y horario. El panel incluye una
+  seccion independiente de Ciudades respaldada por el catalogo global de
+  municipios; solo el superusuario puede modificarla. Sucursales selecciona un
+  `municipio_id` activo y la tienda agrupa las cards por el nombre legible de la
+  ciudad, manteniendo Distrito Central como primer grupo.
 - Busqueda desde el header.
 - Enlace externo a Google Maps.
 
@@ -372,9 +377,18 @@ Archivos: `src/pages/AboutPage.jsx` y `src/admin/AboutSettingsPage.jsx`.
 - El registro publico no envia rol; el backend crea cuentas de comprador.
 - El nombre del registro admite solamente letras Unicode y espacios.
 - Telefono e identidad usan entrada de texto con teclado numerico y eliminan
-  cualquier caracter que no sea digito; la identidad se limita a 13 digitos.
+  cualquier caracter que no sea digito; telefono exige 8 digitos e identidad
+  se limita a 13 digitos.
+- Crear cuenta solicita departamento y municipio desde los catalogos activos de
+  `/ubicaciones/departamentos/` y `/ubicaciones/municipios/`. El municipio se
+  filtra por el departamento elegido y ambos identificadores se envian al
+  registro como `departamento_id` y `municipio_id`.
+- Los datos no sensibles del registro, incluidos departamento y municipio, se
+  conservan al recargar. Si falta un dato o el backend rechaza un campo, el
+  formulario resalta el campo correspondiente, muestra su mensaje y mueve el
+  foco al primer error.
 - El codigo se limita a 6 digitos y siempre se envia al API como texto.
-- Login, contrasena y confirmacion disponen de controles Eye/EyeOff de Lucide
+- Login, contraseña y confirmacion disponen de controles Eye/EyeOff de Lucide
   que no envian el formulario.
 - Login envia `recordarme` al backend desde un checkbox; React mantiene el
   access token solo en memoria y la duracion depende de la cookie `HttpOnly`.
@@ -384,8 +398,8 @@ Archivos: `src/pages/AboutPage.jsx` y `src/admin/AboutSettingsPage.jsx`.
 - Los errores de registro, verificacion y reenvio muestran el mensaje util
   devuelto por el backend cuando esta disponible.
 - Recuperacion solicita un codigo por correo y confirma codigo, nueva
-  contrasena y confirmacion mediante los endpoints oficiales.
-- Correo y paso de recuperacion sobreviven una recarga; codigo y contrasenas
+  contraseña y confirmacion mediante los endpoints oficiales.
+- Correo y paso de recuperacion sobreviven una recarga; codigo y contraseñas
   nunca se guardan en almacenamiento web.
 
 ### Pendiente en el frontend
@@ -470,7 +484,11 @@ entrada alternativa o campos antiguos `producto_nombre`.
 - Solicita destinatario, telefono, departamento, municipio, direccion y
   referencia cuando corresponde.
 - Crea el pedido desde el carrito persistente.
-- Permite elegir `Pagar en linea` o `Pagar en sucursal` antes de finalizar.
+- Muestra `Pagar en linea` solamente cuando la empresa publica devuelve
+  `pago_en_linea_disponible=true`; de lo contrario selecciona sucursal y no
+  permite llamar accidentalmente al inicio de pago en linea.
+- Permite elegir `Pagar en linea` o `Pagar en sucursal` cuando ambos metodos
+  estan disponibles antes de finalizar.
 - El pago presencial carga las sucursales activas de la empresa y exige una
   seleccion antes de solicitar la prefactura.
 - Si crear el pago falla despues de crear el pedido, guarda el pedido pendiente
@@ -492,7 +510,8 @@ Pendientes del checkout:
 - No muestra una accion manual para actualizar el estado.
 - Reintento de un pago rechazado cuando existe contexto local.
 - Muestra `url_pago` si el backend devuelve una URL HTTP/HTTPS.
-- El pago en linea conserva `POST /api/v1/pagos/iniciar/` sin cambios.
+- El pago en linea conserva `POST /api/v1/pagos/iniciar/` sin cambios y solo se
+  inicia cuando la configuracion publica confirma su disponibilidad.
 - El pago presencial usa
   `POST /api/v1/pedidos/pedidos/{id}/pago-en-sucursal/` y presenta la respuesta
   oficial del pedido, pago y prefactura.
@@ -593,7 +612,8 @@ Entrada principal: `src/admin/AdminApp.jsx`.
 | Pedidos | Listado, detalle, filtro por estado y cancelacion controlada si continua pendiente |
 | Pagos | Listado, detalle, filtro por estado y confirmacion de cobro pendiente en sucursal |
 | Inventario | Resumen, busqueda y ajuste de existencia con motivo/referencia |
-| Configuracion | Datos, contacto, redes, logo, imagen de sucursal, colores, impuesto, envios e imagenes de producto |
+| Ciudades | Catalogo global de municipios; visible para administradores y modificable solo por superusuario |
+| Configuracion | Datos, contacto, redes, logo, imagen de sucursal, colores, impuesto, envios, imagenes de producto y proveedor de pago en linea |
 | Sobre nosotros | Editor de contenido institucional e imagen |
 | Empresas | CRUD general visible solo al superusuario |
 
@@ -606,6 +626,10 @@ Comportamiento comun del panel:
 - Confirmacion de eliminacion.
 - Un `409 Conflict` se presenta como registro protegido por historial.
 - Roles disponibles en el formulario de usuario se reducen segun el actor.
+- Configuracion permite activar pago en linea, elegir proveedor y modo, y
+  escribir las credenciales oficiales. Los secretos nunca se rellenan desde la
+  respuesta: solo se muestran sus indicadores de configuracion y se envian
+  cuando el administrador escribe un reemplazo.
 - Pedidos y pagos muestran el metodo en una columna independiente con las
   etiquetas `Pago en sucursal` y `Pago en linea`.
 - El estado conserva su significado real y ya no se usa para identificar el
@@ -812,7 +836,7 @@ sola que cada flujo de negocio funcione contra datos reales.
 ### Prioridad alta: cerrar funcionalidad principal
 
 1. Resolver y probar la fusion del carrito invitado al autenticarse.
-2. Probar alta, verificacion y recuperacion de contrasena con correo real.
+2. Probar alta, verificacion y recuperacion de contraseña con correo real.
 3. Integrar una pasarela de pago real y redirigir a `url_pago`.
 4. Definir calculo/tarifa real de envio antes de cobrar.
 5. Ejecutar pruebas E2E del recorrido catalogo -> carrito -> login -> pedido ->
@@ -896,7 +920,7 @@ sola que cada flujo de negocio funcione contra datos reales.
 - No almacenar datos bancarios sensibles en React.
 - Los pasos de acceso, registro, verificacion y checkout deben sobrevivir una
   recarga dentro de la misma pestana mediante `sessionStorage`.
-- Nunca guardar contrasenas ni codigos de verificacion en almacenamiento web;
+- Nunca guardar contraseñas ni codigos de verificacion en almacenamiento web;
   esos valores se mantienen solo en memoria y se solicitan nuevamente.
 - Pedidos y pagos administrativos son historial de solo lectura, salvo que se
   apruebe un flujo de negocio controlado.
@@ -908,7 +932,7 @@ El frontend no debe considerarse terminado solo porque compile. Para cerrar la
 primera version deben cumplirse al menos estas condiciones:
 
 - comprador puede registrarse, verificar correo, iniciar/cerrar sesion y
-  recuperar contrasena;
+  recuperar contraseña;
 - registro, verificacion y checkout conservan su paso y datos no sensibles al
   recargar la pagina;
 - carrito conserva articulos al recargar y al autenticarse;

@@ -238,11 +238,57 @@
 }
 
 .branchCard {
+  display: flex;
+  height: 100%;
+  min-height: 410px;
+  flex-direction: column;
   position: relative;
   padding: 22px;
 }
 
+.branchSections {
+  display: grid;
+  gap: 36px;
+}
+
+.citySection {
+  min-width: 0;
+}
+
+.cityLabel {
+  width: fit-content;
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 14px;
+  border: 1px solid var(--color-line);
+  border-left: 4px solid var(--color-red-dark);
+  border-radius: 6px;
+  color: var(--color-blue);
+  background: var(--color-surface);
+}
+
+.cityLabel h2 {
+  margin: 0;
+  font-size: 19px;
+  line-height: 1.2;
+}
+
+.citySection .branchGrid {
+  margin-top: 14px;
+}
+
+.branchGrid {
+  grid-auto-rows: 1fr;
+  align-items: stretch;
+}
+
 .branchCard .cardBody {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
   padding: 0;
 }
 
@@ -251,6 +297,7 @@
 }
 
 .branchTitle {
+  min-height: 2.16em;
   max-width: 100%;
   font-size: 28px !important;
   line-height: 1.08;
@@ -270,6 +317,7 @@
 
 .branchDetails {
   display: grid;
+  flex: 1;
   gap: 10px;
   margin: 16px 0 0;
   color: var(--color-muted);
@@ -281,8 +329,60 @@
   gap: 8px;
 }
 
+.branchDetails .branchAddress {
+  min-height: 4.5em;
+  align-items: flex-start;
+}
+
+.branchDetails .branchAddress > svg {
+  margin-top: 4px;
+  flex: 0 0 auto;
+}
+
+.branchPhone {
+  min-height: 1.5em;
+}
+
+.branchSchedule {
+  display: grid;
+  grid-template-columns: 17px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.branchSchedule > svg {
+  margin-top: 3px;
+}
+
+.branchSchedule dl {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  margin: 0;
+}
+
+.scheduleRow {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: baseline;
+}
+
+.scheduleRow dt {
+  color: var(--color-blue);
+  font-weight: 700;
+}
+
+.scheduleRow dd {
+  min-width: 0;
+  margin: 0;
+}
+
 .mapLink {
-  margin-top: 18px;
+  display: inline-flex;
+  align-self: flex-start;
+  margin-top: auto;
+  padding-top: 18px;
   color: var(--color-red-dark);
   font-weight: 800;
 }
@@ -436,6 +536,23 @@
     padding: 16px;
   }
 
+  .branchSections {
+    gap: 28px;
+  }
+
+  .branchCard {
+    min-height: 390px;
+  }
+
+  .cityLabel {
+    min-height: 38px;
+    padding-inline: 11px;
+  }
+
+  .cityLabel h2 {
+    font-size: 17px;
+  }
+
   .cardBody h3,
   .offerBody h3 {
     font-size: 20px;
@@ -471,6 +588,10 @@
     font-size: 28px;
   }
 
+  .scheduleRow {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
 }
 
 .compactProductGrid {

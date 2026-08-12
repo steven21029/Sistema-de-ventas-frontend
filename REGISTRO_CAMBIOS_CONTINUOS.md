@@ -853,7 +853,7 @@ Superadministrador:
 
 - Usuario de Django Admin: `admin`
 - Correo para el login del frontend: `analizahn2025@gmail.com`
-- Contrasena temporal: `0000`
+- Contraseña temporal: `0000`
 - Rol: `administrador_maestro`
 - Empresa fija: ninguna
 - Cuenta activa y verificada.
@@ -862,7 +862,7 @@ Comprador de Analiza:
 
 - Usuario: `compras`
 - Correo para el login: `compras@example.com`
-- Contrasena temporal: `0000`
+- Contraseña temporal: `0000`
 - Rol: `comprador`
 - Empresa: `Analiza`
 - Cuenta activa y verificada.
@@ -955,10 +955,10 @@ Usuarios y sesiones:
   `puede_crear_usuarios=true`.
 - Comprador no tiene acceso al panel.
 - Se agregaron filtros por texto, rol, estado, empresa y orden.
-- La contrasena nunca aparece en las respuestas.
+- La contraseña nunca aparece en las respuestas.
 - Las acciones `bloquear` y `desbloquear` cambian tanto el perfil como el usuario
   Django.
-- Bloquear, desactivar o cambiar contrasena revoca todos los refresh tokens.
+- Bloquear, desactivar o cambiar contraseña revoca todos los refresh tokens.
 - Crear sin `correo_verificado=true` deja la cuenta inactiva.
 - El login rechaza perfiles con correo sin verificar.
 
@@ -1175,7 +1175,7 @@ Cambios:
 - El modal publico de Mi cuenta ahora permite cambiar entre iniciar sesion,
   crear cuenta y activar cuenta.
 - El formulario de registro solicita nombre completo, correo, telefono,
-  numero de identidad, contrasena, confirmacion y aceptaciones legales.
+  numero de identidad, contraseña, confirmacion y aceptaciones legales.
 - El registro usa `POST /api/usuarios/registro-comprador/`.
 - La verificacion usa `POST /api/usuarios/verificar-correo/`.
 - El reenvio usa `POST /api/usuarios/reenviar-verificacion/`.
@@ -1608,7 +1608,7 @@ Cambios:
 - El codigo de verificacion conserva un maximo de 6 digitos y el servicio lo
   envia como `string`.
 - Se agregaron botones `type="button"` con Eye/EyeOff de Lucide en login,
-  contrasena nueva y confirmacion.
+  contraseña nueva y confirmacion.
 - El registro pasa directamente a la verificacion sin llamar al endpoint de
   reenvio, porque el registro ya solicita el primer codigo.
 - El mensaje `Código reenviado` solo se muestra cuando
@@ -1821,7 +1821,7 @@ Estado: implementado y verificado en frontend.
   paso de inicio de sesion, creacion de cuenta o activacion despues de recargar.
 - Registro conserva nombre, correo, telefono, identidad y aceptaciones; la
   activacion conserva el correo pendiente.
-- Las contrasenas y el codigo de seis digitos nunca se guardan y siempre se
+- Las contraseñas y el codigo de seis digitos nunca se guardan y siempre se
   restauran vacios.
 - Al completar la verificacion se abandona el estado pendiente y al iniciar
   sesion se elimina el borrador de autenticacion.
@@ -1842,19 +1842,19 @@ Verificacion:
 
 - `npm run build`: correcto; Vite transformo 1643 modulos.
 - Chrome headless: verificacion y registro restaurados despues de recargar;
-  correo y datos no sensibles presentes, contrasenas y codigo vacios.
+  correo y datos no sensibles presentes, contraseñas y codigo vacios.
 
-## 2026-08-11 - Recordarme, recuperacion de contrasena y Favoritos responsive
+## 2026-08-11 - Recordarme, recuperacion de contraseña y Favoritos responsive
 
 Estado: implementado y verificado en frontend con el contrato actualizado.
 
 - Login incorpora `Recordarme` y envia `recordarme` como booleano; login,
   refresh y logout conservan la cookie protegida mediante credenciales.
-- `Olvide mi contrasena` solicita el codigo por correo y presenta un segundo
-  paso para codigo, nueva contrasena y confirmacion.
+- `Olvide mi contraseña` solicita el codigo por correo y presenta un segundo
+  paso para codigo, nueva contraseña y confirmacion.
 - El codigo se limita a seis digitos y se envia como string.
 - Los pasos de recuperacion sobreviven una recarga conservando solo el correo;
-  codigo y contrasenas se restauran vacios.
+  codigo y contraseñas se restauran vacios.
 - Se muestran los mensajes utiles del backend y se permite solicitar un nuevo
   codigo desde el segundo paso.
 - El drawer de Favoritos usa el alto del viewport, scroll interno y padding
@@ -1877,3 +1877,72 @@ Verificacion:
 - Chrome headless a 320 px: payloads de login y recuperacion comprobados,
   secretos vacios tras recargar y Favoritos sin desbordamiento horizontal ni
   botones recortados.
+
+## 2026-08-12 - Telefonos limitados a ocho digitos
+
+Estado: implementado en frontend.
+
+- Registro, checkout, contacto, configuracion de empresa y formularios
+  administrativos aceptan solamente digitos y un maximo de 8 caracteres.
+- Los campos obligatorios requieren exactamente 8 digitos; los opcionales
+  pueden quedar vacios, pero al completarse deben respetar la misma longitud.
+- Valores pegados con espacios, guiones o prefijos se normalizan antes de
+  guardarse en el estado y nuevamente antes de formar los payloads.
+
+## 2026-08-12 - Disponibilidad y configuracion de pago en linea
+
+Estado: implementado y verificado en frontend con los contratos oficiales.
+
+- Checkout muestra `Pagar en linea` unicamente cuando la empresa publica
+  devuelve `pago_en_linea_disponible=true`.
+- Si no esta disponible, cualquier seleccion restaurada de pago en linea se
+  descarta, sucursal queda seleccionada y React bloquea la llamada al endpoint
+  de inicio en linea.
+- La ausencia de sucursales activas se presenta como un metodo no disponible y
+  mantiene deshabilitada la finalizacion.
+- Configuracion administrativa permite activar el metodo y editar proveedor,
+  modo, credencial publica, credencial secreta y secreto del webhook.
+- Proveedores disponibles: `simulado`, `paypal`, `stripe`, `bac` y `otro`;
+  modos disponibles: `pruebas` y `produccion`.
+- Los secretos nunca se restauran en inputs. Solo se envian al escribir un
+  valor nuevo y despues se muestran los indicadores seguros entregados por el
+  backend.
+- La interfaz distingue el estado guardado `pago_en_linea_disponible` del
+  checkbox local pendiente de guardar.
+
+Verificacion:
+
+- `npm run build`: correcto; Vite transformo 1644 modulos.
+- Chrome headless a 320 px: checkout con disponibilidad activa e inactiva,
+  formulario administrativo, payload multipart, limpieza de secretos y cero
+  desbordamiento horizontal.
+## 2026-08-12 - Sucursales agrupadas por ciudad
+
+- La pagina publica muestra todas las sucursales agrupadas por ciudad, sin usar
+  pestañas, en el orden Distrito Central, Comayagua, San Pedro Sula y Choluteca.
+- Los prefijos conocidos se ocultan solamente en el nombre visible de la tarjeta.
+- El panel incorpora una seccion independiente de Ciudades conectada a
+  `/ubicaciones/municipios/`. El catalogo es visible para administradores y solo
+  modificable por superusuarios.
+- Sucursales dejo de enviar la ciudad como texto libre: selecciona un municipio
+  activo y envia `municipio_id`, conservando ciudad y departamento como columnas
+  legibles de la respuesta.
+
+## 2026-08-12 - Departamento, municipio y errores en Crear cuenta
+
+Estado: implementado y verificado en frontend.
+
+- El registro de comprador carga los departamentos activos y, despues de elegir
+  uno, muestra solamente sus municipios activos.
+- El payload de `/usuarios/registro-comprador/` incluye `departamento_id` y
+  `municipio_id` como numeros.
+- Departamento y municipio se conservan con los demas datos no sensibles del
+  formulario cuando la pagina se recarga.
+- Los campos vacios o invalidos se resaltan individualmente, muestran un mensaje
+  debajo del control y enfocan el primer error.
+- Los errores de campos devueltos por el backend se asocian con su control en el
+  formulario en lugar de mostrarse como un mensaje generico.
+
+Verificacion:
+
+- `npm run build`: correcto; Vite transformo 1645 modulos.

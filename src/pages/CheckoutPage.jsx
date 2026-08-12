@@ -16,6 +16,7 @@ import { getSucursales } from "../services/paginasService";
 import { generarPedidoDesdeCarrito } from "../services/pedidoService";
 import { getApiErrorMessage } from "../utils/apiError";
 import { formatMoney, toNumber } from "../utils/money";
+import { normalizePhone, PHONE_LENGTH, PHONE_PATTERN } from "../utils/phone";
 import {
   clearCheckoutDraft,
   clearPendingOrder,
@@ -32,7 +33,7 @@ function getCustomerDefaults(session) {
 
   return {
     nombre_recibe: [user?.first_name, user?.last_name].filter(Boolean).join(" ").trim(),
-    telefono_recibe: session?.perfil?.telefono || "",
+    telefono_recibe: normalizePhone(session?.perfil?.telefono),
   };
 }
 
@@ -61,6 +62,7 @@ function CheckoutPage({
   totals,
 }) {
   const checkoutScope = `${empresaSlug}:${authSession?.usuario?.id || ""}`;
+  const canPayOnline = empresa?.pago_en_linea_disponible === true;
   const [deliveryType, setDeliveryType] = useState(
     empresa?.tiene_envios ? "envio_local" : "retiro_en_local",
   );
@@ -73,7 +75,9 @@ function CheckoutPage({
     referencia_entrega: "",
   }));
   const [pendingOrder, setPendingOrder] = useState(null);
-  const [paymentMethod, setPaymentMethod] = useState("en_linea");
+  const [paymentMethod, setPaymentMethod] = useState(() =>
+    empresa?.pago_en_linea_disponible === true ? "en_linea" : "sucursal",
+  );
   const [branches, setBranches] = useState([]);
   const [selectedBranchId, setSelectedBranchId] = useState("");
   const [branchesLoading, setBranchesLoading] = useState(false);
@@ -98,11 +102,13 @@ function CheckoutPage({
           ? "envio_local"
           : "retiro_en_local",
     );
-    setPaymentMethod(
-      ["en_linea", "sucursal"].includes(storedDraft.paymentMethod)
-        ? storedDraft.paymentMethod
-        : "en_linea",
-    );
+    setPaymentMethod(() => {
+      if (storedDraft.paymentMethod === "sucursal") {
+        return "sucursal";
+      }
+
+      return canPayOnline ? "en_linea" : "sucursal";
+    });
     setSelectedBranchId(String(storedDraft.selectedBranchId || ""));
     setFields({
       ...getCustomerDefaults(authSession),
@@ -115,11 +121,14 @@ function CheckoutPage({
       observaciones: String(storedFields.observaciones || ""),
       referencia_entrega: String(storedFields.referencia_entrega || ""),
       telefono_recibe: String(
-        storedFields.telefono_recibe || getCustomerDefaults(authSession).telefono_recibe,
+        normalizePhone(
+          storedFields.telefono_recibe ||
+            getCustomerDefaults(authSession).telefono_recibe,
+        ),
       ),
     });
     setCheckoutDraftReadyScope(checkoutScope);
-  }, [authSession, checkoutScope, empresa?.tiene_envios]);
+  }, [authSession, canPayOnline, checkoutScope, empresa?.tiene_envios]);
 
   useEffect(() => {
     if (!checkoutScope || checkoutDraftReadyScope !== checkoutScope) {
@@ -156,6 +165,11 @@ function CheckoutPage({
         const payload = await getSucursales(empresaSlug);
         if (isActive) {
           setBranches(payload);
+          setBranchesError(
+            payload.length === 0
+              ? "No hay sucursales activas disponibles para recibir el pago."
+              : "",
+          );
           setSelectedBranchId((current) =>
             payload.some((branch) => String(branch.id) === String(current))
               ? current
@@ -210,7 +224,10 @@ function CheckoutPage({
 
   function updateField(event) {
     const { name, value } = event.target;
-    setFields((current) => ({ ...current, [name]: value }));
+    setFields((current) => ({
+      ...current,
+      [name]: name === "telefono_recibe" ? normalizePhone(value) : value,
+    }));
   }
 
   async function handlePay(event) {
@@ -223,6 +240,10 @@ function CheckoutPage({
         throw new Error("Selecciona la sucursal donde realizaras el pago.");
       }
 
+      if (!paysAtBranch && !canPayOnline) {
+        throw new Error("El pago en linea no esta disponible para esta empresa.");
+      }
+
       let order = pendingOrder;
 
       if (!order) {
@@ -233,7 +254,9 @@ function CheckoutPage({
         order = await generarPedidoDesdeCarrito(cartId, {
           tipo_entrega: deliveryType,
           nombre_recibe: requiresAddress ? fields.nombre_recibe.trim() : "",
-          telefono_recibe: requiresAddress ? fields.telefono_recibe.trim() : "",
+          telefono_recibe: requiresAddress
+            ? normalizePhone(fields.telefono_recibe)
+            : "",
           direccion_entrega: requiresAddress ? fields.direccion_entrega.trim() : "",
           referencia_entrega: requiresAddress ? fields.referencia_entrega.trim() : "",
           departamento_entrega: requiresAddress
@@ -408,10 +431,14 @@ function CheckoutPage({
                   <label>
                     Telefono
                     <input
+                      type="text"
                       name="telefono_recibe"
                       value={fields.telefono_recibe}
                       onChange={updateField}
                       autoComplete="tel"
+                      inputMode="numeric"
+                      maxLength={PHONE_LENGTH}
+                      pattern={PHONE_PATTERN}
                       required
                     />
                   </label>
@@ -495,18 +522,24 @@ function CheckoutPage({
               </div>
             </div>
 
-            <div className={styles.paymentMethodSwitch}>
-              <label className={paymentMethod === "en_linea" ? styles.selectedMode : ""}>
-                <input
-                  checked={paymentMethod === "en_linea"}
-                  name="metodo_pago"
-                  onChange={(event) => setPaymentMethod(event.target.value)}
-                  type="radio"
-                  value="en_linea"
-                />
-                <CreditCard size={18} aria-hidden="true" />
-                Pagar en linea
-              </label>
+            <div
+              className={`${styles.paymentMethodSwitch} ${
+                canPayOnline ? "" : styles.singlePaymentMethod
+              }`}
+            >
+              {canPayOnline ? (
+                <label className={paymentMethod === "en_linea" ? styles.selectedMode : ""}>
+                  <input
+                    checked={paymentMethod === "en_linea"}
+                    name="metodo_pago"
+                    onChange={(event) => setPaymentMethod(event.target.value)}
+                    type="radio"
+                    value="en_linea"
+                  />
+                  <CreditCard size={18} aria-hidden="true" />
+                  Pagar en linea
+                </label>
+              ) : null}
               <label className={paysAtBranch ? styles.selectedMode : ""}>
                 <input
                   checked={paysAtBranch}

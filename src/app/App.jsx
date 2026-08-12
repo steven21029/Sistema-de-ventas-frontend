@@ -1410,6 +1410,7 @@ function App() {
     if (paymentReference) {
       return (
         <PaymentPage
+          canPayOnline={empresa?.pago_en_linea_disponible === true}
           hasDelivery={empresa?.tiene_envios === true}
           onContinueShopping={handleBrandNavigation}
           onNavigatePayment={handleNavigatePayment}

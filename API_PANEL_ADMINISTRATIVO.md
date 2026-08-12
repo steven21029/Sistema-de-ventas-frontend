@@ -1,9 +1,6 @@
 # Contrato API del panel administrativo
 
-Estado: implementado en backend Django y verificado el 3 de agosto de 2026.
-Actualizacion frontend 2026-08-05: el cliente React consume la API con base
-versionada `/api/v1`. Cualquier ejemplo historico escrito como `/api/...` debe
-leerse en frontend como `/api/v1/...`.
+Estado: implementado en backend Django y verificado el 6 de agosto de 2026.
 
 Este documento es el contrato oficial para implementar el panel React. Las
 rutas publicas existentes se conservan. Todas las rutas indicadas empiezan con
@@ -101,7 +98,7 @@ Respuesta paginada:
 }
 ```
 
-Menu, sucursales administrativas, catalogo administrativo, paquetes y
+Menu, ubicaciones, sucursales administrativas, catalogo administrativo, paquetes y
 usuarios siempre se paginan. Promociones, contactos, pedidos y pagos conservan
 la lista anterior salvo que se envie `paginar=true`.
 
@@ -111,14 +108,56 @@ la lista anterior salvo que se envie `paginar=true`.
 | --- | --- | --- |
 | `GET` | `/api/empresas/contexto-administrativo/` | Usuario, empresa y permisos actuales |
 | `GET`, `PATCH` | `/api/empresas/mi-empresa/` | Branding y configuracion de la empresa actual |
-| CRUD | `/api/empresas/items-menu/` | Menu configurable |
+| `GET` | `/api/empresas/items-menu/` | Listar modulos oficiales del menu |
+| `GET`, `PUT`, `PATCH` | `/api/empresas/items-menu/{id}/` | Cambiar texto, orden o estado |
+| CRUD | `/api/ubicaciones/departamentos/` | Catalogo global de departamentos |
+| CRUD | `/api/ubicaciones/municipios/` | Catalogo global de municipios |
 | CRUD | `/api/empresas/sucursales/` | Sucursales |
 | CRUD | `/api/empresas/` | Solo superusuario; crear y administrar empresas |
+| `GET` | `/api/empresas/sobre-nosotros/` | Contenido publico por empresa |
+| `GET`, `PATCH` | `/api/empresas/mi-sobre-nosotros/` | Administrar contenido de la empresa actual |
 
 `mi-empresa` permite cambiar nombre, logo, imagen general de sucursales,
-colores, telefono, correo, direccion, sitio web, envios, impuesto e imagenes de
-productos. `slug`, dominio, subdominio, modo de inventario y estado activo son
-de solo lectura en esta ruta y los controla el superusuario.
+colores, telefono, correo, direccion, sitio web, redes sociales, envios,
+impuesto, pago en linea e imagenes de productos. `slug`, dominio, subdominio,
+modo de inventario y estado activo son de solo lectura en esta ruta y los
+controla el superusuario.
+
+Campos editables de redes sociales:
+
+```json
+{
+  "instagram_url": "https://www.instagram.com/analiza",
+  "whatsapp_url": "https://wa.me/50499999999",
+  "facebook_url": "https://www.facebook.com/analiza",
+  "tiktok_url": "https://www.tiktok.com/@analiza"
+}
+```
+
+Todos son opcionales, deben usar HTTPS y pertenecer al dominio oficial de la
+red correspondiente. No existen endpoints separados para redes sociales.
+
+Campos de pago en linea en `mi-empresa`:
+
+```json
+{
+  "pago_en_linea_activo": true,
+  "pago_en_linea_proveedor": "paypal",
+  "pago_en_linea_modo": "pruebas",
+  "pago_en_linea_credencial_publica": "CLIENT_ID_O_MERCHANT_ID",
+  "pago_en_linea_credencial_secreta": "SECRETO_PRIVADO",
+  "pago_en_linea_webhook_secreto": "SECRETO_WEBHOOK"
+}
+```
+
+`pago_en_linea_credencial_secreta` y `pago_en_linea_webhook_secreto` son
+campos de escritura: el backend los acepta pero nunca los devuelve. La respuesta
+usa `pago_en_linea_credencial_secreta_configurada`,
+`pago_en_linea_webhook_secreto_configurado` y `pago_en_linea_disponible`.
+
+Para `simulado`, no hacen falta credenciales. Para proveedores reales, activar
+`pago_en_linea_activo` exige proveedor, credencial publica, credencial secreta
+y secreto de webhook. Si falta algo, el backend responde `400`.
 
 Item de menu:
 
@@ -133,9 +172,153 @@ Item de menu:
 }
 ```
 
-`ruta` acepta rutas internas como `/servicios` o una URL completa. El texto y
-el orden son independientes por empresa. Clave y orden no pueden repetirse en
-la misma empresa.
+Los modulos oficiales son `inicio`, `examenes`, `perfiles`, `servicios`,
+`promociones`, `sucursales`, `contacto` y `sobre_nosotros`. Todas las empresas
+reciben los ocho automaticamente. `clave`, `ruta` y
+`abre_en_nueva_pestana` son de solo lectura; solo pueden cambiarse `texto`,
+`orden` y `activo`. No existe `POST` ni `DELETE` para items del menu.
+
+Rutas oficiales:
+
+```text
+inicio             /
+examenes           /examenes
+perfiles           /perfiles
+servicios          /servicios
+promociones        /promociones
+sucursales         /sucursales
+contacto           /contacto
+sobre_nosotros     /sobre-nosotros
+```
+
+Sucursales devuelve `horario` por compatibilidad y `horario_lineas` como un
+arreglo listo para renderizar en el frontend. En las cards publicas usar
+`horario_lineas` para mostrar lunes a viernes, sabado y domingo en filas
+separadas.
+
+Catalogo global de ubicaciones:
+
+```http
+GET /api/ubicaciones/departamentos/?buscar=francisco
+POST /api/ubicaciones/departamentos/
+GET /api/ubicaciones/departamentos/{id}/
+PATCH /api/ubicaciones/departamentos/{id}/
+DELETE /api/ubicaciones/departamentos/{id}/
+
+GET /api/ubicaciones/municipios/?departamento_id=8&buscar=distrito
+POST /api/ubicaciones/municipios/
+GET /api/ubicaciones/municipios/{id}/
+PATCH /api/ubicaciones/municipios/{id}/
+DELETE /api/ubicaciones/municipios/{id}/
+```
+
+Tambien funciona bajo `/api/v1/`. Los listados aceptan `buscar`,
+`activo=true|false`, `incluir_inactivos=true`, `orden`, `paginar=true|false`,
+`page` y `tamano_pagina`. Municipios acepta ademas `departamento_id` y
+`departamento_codigo`.
+
+Payload de departamento:
+
+```json
+{
+  "codigo": "08",
+  "nombre": "Francisco Morazan",
+  "orden": 8,
+  "activo": true
+}
+```
+
+Payload de municipio:
+
+```json
+{
+  "codigo": "0801",
+  "nombre": "Distrito Central",
+  "departamento_id": 8,
+  "orden": 1,
+  "activo": true
+}
+```
+
+Respuesta de municipio:
+
+```json
+{
+  "id": 80,
+  "codigo": "0801",
+  "nombre": "Distrito Central",
+  "departamento_id": 8,
+  "departamento": "Francisco Morazan",
+  "departamento_codigo": "08",
+  "orden": 1,
+  "activo": true
+}
+```
+
+Reglas:
+
+- El catalogo es global para Honduras, no por empresa.
+- Mutaciones de departamentos y municipios solo las realiza el superusuario.
+- No se permiten municipios duplicados dentro del mismo departamento, aunque
+  cambien mayusculas o tildes.
+- `GET` publico devuelve solo departamentos/municipios activos; usuarios
+  administrativos pueden usar `activo` e `incluir_inactivos`.
+- Municipios inactivos no pueden asignarse a nuevas sucursales ni registros.
+- Un municipio vinculado a sucursales no se elimina: `DELETE` responde `409`.
+  Debe desactivarse con `PATCH {"activo": false}`.
+
+Sucursales usa el catalogo con `municipio_id`:
+
+```json
+{
+  "nombre": "TEG - Aeroplaza",
+  "municipio_id": 80,
+  "direccion": "Centro Comercial Aeroplaza",
+  "telefono": "22334455",
+  "horario": "Lunes a viernes: 6:00am-5:00pm; Sabado: 6:00am-1:00pm; Domingo: Cerrado",
+  "orden": 1,
+  "estado": "activa"
+}
+```
+
+La respuesta de sucursales incluye `municipio_id`, `municipio`,
+`departamento_id`, `departamento`, `ciudad` y `estado`. `ciudad` se conserva
+como texto legible por compatibilidad con reportes y frontend existente. El
+backend rechaza municipios inactivos.
+
+`DELETE /api/empresas/sucursales/{id}/` no borra la fila: marca la sucursal
+como `estado="inactiva"` y `activa=false` para conservar historial.
+
+Estados de sucursal:
+
+```text
+activa
+temporalmente_cerrada
+inactiva
+```
+
+Rutas publicas de sucursales:
+
+```http
+GET /api/empresas/sucursales/?empresa_slug=analiza&municipio_id=80
+GET /api/empresas/sucursales/zonas/?empresa_slug=analiza&buscar=centro
+GET /api/empresas/sucursales/cerca/?empresa_slug=analiza
+```
+
+`zonas` agrupa solamente sucursales activas con municipio activo. `cerca`
+requiere autenticacion y usa el municipio guardado en el perfil del usuario.
+
+Contenido publico de Sobre nosotros:
+
+```http
+GET /api/empresas/sobre-nosotros/?empresa_slug=analiza
+```
+
+Devuelve `titulo`, `introduccion`, `historia`, `mision`, `vision`,
+`valores_lista`, `compromiso` e `imagen_final`. Si el modulo
+`sobre_nosotros` esta inactivo, la API publica responde `404`. El panel edita
+la ficha fija mediante `GET/PATCH /api/empresas/mi-sobre-nosotros/`. No se
+crean paginas ni secciones genericas.
 
 ## 6. Catalogo
 
@@ -261,6 +444,10 @@ pago solo cambian mediante el flujo controlado y webhook firmado. El backend
 ya evita dos pagos pendientes para el mismo pedido y procesa webhooks de forma
 idempotente.
 
+`POST /api/pagos/iniciar/` solo funciona cuando la empresa del pedido tiene
+`pago_en_linea_disponible=true`. Si la empresa desactiva pago en linea o falta
+configuracion, la API devuelve `400` con la clave `pago_en_linea`.
+
 ## 10. Imagenes
 
 Para subir archivo usar `multipart/form-data`. Para almacenamiento externo
@@ -309,3 +496,46 @@ Preferir siempre `PATCH {"activo": false}` o `PATCH {"activa": false}`.
 8. Ante `401`, intentar refresh una vez; si falla, volver al login.
 9. Ante `403`, cerrar la vista solicitada sin mostrar datos parciales.
 10. Ante `409`, ofrecer desactivar el registro.
+
+## 14. Reportes comerciales
+
+El panel debe consumir los calculos oficiales del backend mediante:
+
+- `GET /api/v1/reportes/resumen-ventas/`
+- `GET /api/v1/reportes/ventas/exportar/`
+
+Ambas rutas tambien conservan compatibilidad bajo `/api/`. Solo pueden usarlas
+superusuarios, administradores maestros autorizados, administradores de empresa
+y gerentes de la empresa solicitada. Los compradores reciben `403`.
+
+El contrato completo, las reglas contables, los parametros y los formatos de
+descarga estan documentados en `docs/API_REPORTES_COMERCIALES.md`.
+
+## 15. Pago en sucursal
+
+El pago en linea existente conserva su contrato:
+
+- `POST /api/v1/pagos/iniciar/`
+
+El comprador puede elegir una sucursal activa de la empresa y generar su
+prefactura mediante:
+
+- `POST /api/v1/pedidos/pedidos/{pedido_id}/pago-en-sucursal/`
+- `GET /api/v1/pedidos/pedidos/{pedido_id}/prefactura/pdf/`
+- `POST /api/v1/pedidos/pedidos/{pedido_id}/prefactura/reenviar-correo/`
+
+La confirmacion presencial es administrativa:
+
+- `POST /api/v1/pagos/{referencia}/confirmar-en-sucursal/`
+
+Los pedidos que continuan pendientes pueden cancelarse con auditoria mediante:
+
+- `POST /api/v1/pedidos/pedidos/{pedido_id}/cancelar-pendiente/`
+
+Todas las rutas tambien funcionan bajo `/api/`. El inicio es idempotente, no
+descuenta inventario y envia el PDF solamente al correo verificado del
+comprador. La confirmacion valida inventario y reutiliza los efectos
+comerciales del pago aprobado, sin duplicarlos si se repite.
+
+El contrato completo, las respuestas, permisos, errores y variables de
+entorno estan documentados en `docs/API_PAGO_EN_SUCURSAL.md`.
