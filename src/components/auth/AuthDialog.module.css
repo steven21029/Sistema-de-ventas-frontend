@@ -333,6 +333,185 @@
   outline-offset: 2px;
 }
 
+.consentCopy {
+  min-width: 0;
+  color: var(--color-ink);
+}
+
+.consentCopy > span {
+  display: inline;
+}
+
+.form .consentCopy label {
+  display: inline;
+  color: inherit;
+  font: inherit;
+}
+
+.consentCopy > small {
+  display: block;
+  margin-top: 4px;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.legalLink {
+  display: inline;
+  padding: 0;
+  border: 0;
+  color: var(--color-blue);
+  background: transparent;
+  font: inherit;
+  font-weight: 900;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.legalLink:hover {
+  color: var(--color-red-dark);
+}
+
+.legalLink:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid var(--color-blue);
+  outline-offset: 2px;
+}
+
+.legalLayer {
+  position: fixed;
+  z-index: 3;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.legalBackdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(16, 24, 40, 0.62);
+}
+
+.legalDialog {
+  position: relative;
+  z-index: 1;
+  width: min(680px, 100%);
+  max-height: calc(100vh - 40px);
+  max-height: calc(100dvh - 40px);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-line);
+  border-top: 5px solid var(--color-red-dark);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: 0 28px 80px rgba(16, 24, 40, 0.3);
+  overflow: hidden;
+}
+
+.legalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 22px 24px 18px;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.legalHeader p,
+.legalHeader h2 {
+  margin: 0;
+}
+
+.legalHeader p {
+  margin-bottom: 3px;
+  color: var(--color-red-dark);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.legalHeader h2 {
+  color: var(--color-blue);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 30px;
+  font-weight: 500;
+}
+
+.legalHeader > button {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  color: var(--color-blue);
+  background: white;
+}
+
+.legalBody {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 20px 24px 24px;
+}
+
+.legalUpdated {
+  margin: 0 0 8px;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.legalIntro {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.legalSections {
+  margin-top: 18px;
+}
+
+.legalSections section {
+  padding: 14px 0;
+  border-top: 1px solid var(--color-line);
+}
+
+.legalSections h3 {
+  margin: 0 0 6px;
+  color: var(--color-blue);
+  font-size: 15px;
+}
+
+.legalSections p {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.legalFooter {
+  display: flex;
+  justify-content: flex-end;
+  padding: 14px 24px;
+  border-top: 1px solid var(--color-line);
+  background: var(--color-surface-soft);
+}
+
+.legalFooter button {
+  min-height: 42px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: white;
+  background: var(--color-red-dark);
+  font-weight: 900;
+}
+
 .accountView {
   display: grid;
   gap: 20px;
@@ -471,6 +650,35 @@
 
   .checkboxField {
     font-size: 13px !important;
+  }
+
+  .legalLayer {
+    padding: 10px;
+  }
+
+  .legalDialog {
+    max-height: calc(100vh - 20px);
+    max-height: calc(100dvh - 20px);
+  }
+
+  .legalHeader {
+    padding: 17px 16px 14px;
+  }
+
+  .legalHeader h2 {
+    font-size: 25px;
+  }
+
+  .legalBody {
+    padding: 16px;
+  }
+
+  .legalFooter {
+    padding: 12px 16px;
+  }
+
+  .legalFooter button {
+    width: 100%;
   }
 
   .accountView {

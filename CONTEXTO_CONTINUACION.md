@@ -387,6 +387,13 @@ Archivos: `src/pages/AboutPage.jsx` y `src/admin/AboutSettingsPage.jsx`.
   conservan al recargar. Si falta un dato o el backend rechaza un campo, el
   formulario resalta el campo correspondiente, muestra su mensaje y mueve el
   foco al primer error.
+- El consentimiento obligatorio combina terminos de uso y aviso de privacidad;
+  su texto es cliqueable y abre una vista informativa responsive identificada
+  con la empresa actual. El consentimiento promocional es una segunda casilla
+  separada y opcional.
+- El frontend envia `acepta_promociones` como booleano. Su persistencia,
+  auditoria y retiro requieren soporte del backend; no debe asumirse consentimiento
+  cuando el campo sea `false` o no exista.
 - El codigo se limita a 6 digitos y siempre se envia al API como texto.
 - Login, contraseña y confirmacion disponen de controles Eye/EyeOff de Lucide
   que no envian el formulario.
@@ -481,6 +488,10 @@ entrada alternativa o campos antiguos `producto_nombre`.
   `retiro_en_local` al backend.
 - Con envios usa `Carrito -> Entrega -> Pago`.
 - Admite envio local y nacional.
+- El pago en sucursal informa que la prefactura conserva el monto durante 72
+  horas desde su emision. Si el backend devuelve el pago como rechazado, la
+  pantalla deja de ofrecer descarga y reenvio y comunica que debe generarse un
+  pedido nuevo.
 - Solicita destinatario, telefono, departamento, municipio, direccion y
   referencia cuando corresponde.
 - Crea el pedido desde el carrito persistente.

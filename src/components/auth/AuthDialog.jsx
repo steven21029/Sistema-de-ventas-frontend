@@ -26,7 +26,7 @@ import { normalizePhone, PHONE_LENGTH, PHONE_PATTERN } from "../../utils/phone";
 import styles from "./AuthDialog.module.css";
 
 const INITIAL_REGISTER_FORM = {
-  aceptaPrivacidad: false,
+  aceptaPromociones: false,
   aceptaTerminos: false,
   departamentoId: "",
   email: "",
@@ -53,11 +53,11 @@ const REGISTER_FIELD_ORDER = [
   "password",
   "passwordConfirmacion",
   "aceptaTerminos",
-  "aceptaPrivacidad",
 ];
 
 const REGISTER_API_FIELDS = {
-  acepta_privacidad: "aceptaPrivacidad",
+  acepta_privacidad: "aceptaTerminos",
+  acepta_promociones: "aceptaPromociones",
   acepta_terminos: "aceptaTerminos",
   departamento_id: "departamentoId",
   email: "email",
@@ -119,9 +119,6 @@ function validateRegisterForm(form) {
   if (!form.aceptaTerminos) {
     errors.aceptaTerminos = "Debes aceptar los terminos y condiciones.";
   }
-  if (!form.aceptaPrivacidad) {
-    errors.aceptaPrivacidad = "Debes aceptar la politica de privacidad.";
-  }
 
   return errors;
 }
@@ -147,7 +144,7 @@ function getInitialAuthFlow() {
     rememberMe: flow.rememberMe === true,
     registerForm: {
       ...INITIAL_REGISTER_FORM,
-      aceptaPrivacidad: storedForm.aceptaPrivacidad === true,
+      aceptaPromociones: storedForm.aceptaPromociones === true,
       aceptaTerminos: storedForm.aceptaTerminos === true,
       departamentoId:
         storedForm.departamentoId === undefined || storedForm.departamentoId === null
@@ -216,8 +213,187 @@ function PasswordVisibilityButton({ isVisible, onToggle }) {
   );
 }
 
+function LegalTermsDialog({ company, onClose }) {
+  const companyName = company?.nombre || "la empresa responsable de esta tienda";
+  const contactText = company?.correo
+    ? `escribiendo a ${company.correo}`
+    : "mediante los canales publicados en la seccion de Contacto";
+
+  return (
+    <div className={styles.legalLayer}>
+      <button
+        aria-label="Cerrar terminos y condiciones"
+        className={styles.legalBackdrop}
+        onClick={onClose}
+        type="button"
+      />
+      <section
+        aria-labelledby="legal-terms-title"
+        aria-modal="true"
+        className={styles.legalDialog}
+        role="dialog"
+      >
+        <header className={styles.legalHeader}>
+          <div>
+            <p>Registro y privacidad</p>
+            <h2 id="legal-terms-title">Terminos y condiciones</h2>
+          </div>
+          <button aria-label="Cerrar" onClick={onClose} title="Cerrar" type="button">
+            <X size={19} aria-hidden="true" />
+          </button>
+        </header>
+
+        <div className={styles.legalBody}>
+          <p className={styles.legalUpdated}>Ultima actualizacion: 13 de agosto de 2026.</p>
+          <p className={styles.legalIntro}>
+            El responsable de esta tienda es {companyName}
+            {company?.direccion ? `, con domicilio en ${company.direccion}` : ""}.
+            Al crear una cuenta aceptas estas condiciones y autorizas el registro y
+            tratamiento de los datos necesarios para prestar el servicio. Para consultas
+            puedes comunicarte {contactText}.
+          </p>
+
+          <div className={styles.legalSections}>
+            <section>
+              <h3>1. Datos recopilados</h3>
+              <p>
+                Podemos registrar nombre, identidad, correo, telefono, departamento,
+                municipio y la informacion relacionada con cuentas, carritos, pedidos,
+                pagos, prefacturas y solicitudes realizadas en la plataforma.
+              </p>
+            </section>
+            <section>
+              <h3>2. Finalidades necesarias</h3>
+              <p>
+                Los datos se utilizan para crear y proteger la cuenta, verificar la
+                identidad y los medios de contacto, procesar compras y pagos, enviar
+                documentos solicitados, atender consultas, prevenir fraude y cumplir
+                obligaciones legales o administrativas aplicables.
+              </p>
+            </section>
+            <section>
+              <h3>3. Promociones opcionales</h3>
+              <p>
+                Solo si marcas la autorizacion separada podremos enviarte promociones,
+                descuentos e informacion comercial por correo electronico, llamadas,
+                SMS o mensajeria asociada al telefono proporcionado. Rechazar esta
+                opcion no impide crear la cuenta ni realizar compras.
+              </p>
+            </section>
+            <section>
+              <h3>4. Conservacion y proveedores</h3>
+              <p>
+                La informacion se conservara mientras la cuenta este activa y durante
+                los plazos necesarios para atender obligaciones comerciales, fiscales,
+                de seguridad o legales. Podran intervenir proveedores de alojamiento,
+                correo, mensajeria, pagos o soporte, limitados a la funcion contratada.
+                Esta aceptacion no autoriza la venta de tus datos personales.
+              </p>
+            </section>
+            <section>
+              <h3>5. Derechos y retiro del consentimiento</h3>
+              <p>
+                Puedes solicitar acceso, correccion, actualizacion o eliminacion cuando
+                corresponda, y retirar en cualquier momento la autorizacion para
+                promociones {contactText}. Retirarla no afecta pedidos anteriores ni el
+                uso normal de la cuenta.
+              </p>
+            </section>
+            <section>
+              <h3>6. Cuenta y uso seguro</h3>
+              <p>
+                Debes proporcionar datos correctos, mantener en secreto tu contraseña y
+                codigos de verificacion, cerrar la sesion en dispositivos compartidos y
+                avisarnos sin demora si detectas un acceso o una compra no reconocida.
+                No debes compartir enlaces de pago, codigos ni credenciales con terceros.
+              </p>
+            </section>
+            <section>
+              <h3>7. Precios, pedidos y cobros</h3>
+              <p>
+                Antes de confirmar se mostraran los articulos, descuentos, impuestos,
+                envio y total aplicables. El monto definitivo es el asociado al pedido
+                confirmado por el servidor. Debes revisar esa informacion antes de
+                pagar y conservar la referencia o comprobante de la operacion. Cualquier
+                cobro duplicado, monto incorrecto o cargo no reconocido debe reportarse
+                de inmediato {contactText} para su revision.
+              </p>
+            </section>
+            <section>
+              <h3>8. Pago en linea</h3>
+              <p>
+                Los pagos en linea pueden ser procesados por un proveedor externo bajo
+                sus propios controles y condiciones. Debes verificar que estas en el
+                sitio o aplicacion autorizada, utilizar una conexion y un dispositivo
+                confiables y no revelar claves, codigos bancarios ni datos completos de
+                tu medio de pago. La empresa no solicita esos codigos por llamadas,
+                mensajes o correo electronico.
+              </p>
+            </section>
+            <section>
+              <h3>9. Pago en sucursal y prefactura</h3>
+              <p>
+                Una prefactura no es comprobante fiscal ni acredita un pago. El monto
+                indicado se respeta durante las 72 horas de vigencia informadas al
+                emitirla. Si el pago no se confirma dentro de ese plazo, la solicitud
+                puede ser rechazada y sera necesario crear un pedido nuevo. El pago solo
+                se considera realizado cuando sea confirmado por la sucursal.
+              </p>
+            </section>
+            <section>
+              <h3>10. Uso inseguro y limites de responsabilidad</h3>
+              <p>
+                En la medida permitida por la ley, la empresa no responde por perdidas
+                originadas exclusivamente por compartir credenciales o codigos, ignorar
+                advertencias de seguridad, utilizar dispositivos o redes comprometidas,
+                proporcionar datos incorrectos o permitir el uso de la cuenta por otra
+                persona. Esta limitacion no aplica cuando el dano sea atribuible a fallas
+                de seguridad, fraude, negligencia u obligaciones propias de la empresa,
+                ni elimina los derechos legales del consumidor.
+              </p>
+            </section>
+            <section>
+              <h3>11. Disponibilidad, devoluciones y terceros</h3>
+              <p>
+                El servicio puede interrumpirse temporalmente por mantenimiento, fallas
+                de telecomunicaciones, proveedores de pago o causas fuera del control
+                razonable de la empresa. Las anulaciones, devoluciones y correcciones de
+                cobro se atenderan segun el estado del pedido, el medio de pago, las
+                condiciones informadas y la legislacion aplicable.
+              </p>
+            </section>
+            <section>
+              <h3>12. Seguridad, cambios y contacto</h3>
+              <p>
+                Se aplicaran medidas razonables para proteger la informacion. Las
+                modificaciones importantes de estas condiciones deberan informarse y,
+                cuando cambien las finalidades del tratamiento, podra solicitarse una
+                nueva aceptacion. Puedes realizar consultas {contactText}.
+              </p>
+            </section>
+            <section>
+              <h3>13. Informacion sanitaria y ley aplicable</h3>
+              <p>
+                El catalogo y el proceso de compra no sustituyen una evaluacion,
+                diagnostico o recomendacion de un profesional de la salud. Estas
+                condiciones se interpretan conforme a la legislacion de Honduras, sin
+                limitar los derechos que correspondan al consumidor.
+              </p>
+            </section>
+          </div>
+        </div>
+
+        <footer className={styles.legalFooter}>
+          <button onClick={onClose} type="button">Entendido</button>
+        </footer>
+      </section>
+    </div>
+  );
+}
+
 function AuthDialog({
   canAccessAdminPanel = false,
+  empresa,
   empresaSlug = "",
   isOpen,
   isRestoring = false,
@@ -263,6 +439,18 @@ function AuthDialog({
   const [showRegisterConfirmation, setShowRegisterConfirmation] = useState(false);
   const [showRecoveryPassword, setShowRecoveryPassword] = useState(false);
   const [showRecoveryConfirmation, setShowRecoveryConfirmation] = useState(false);
+  const [showLegalTerms, setShowLegalTerms] = useState(false);
+
+  useEffect(() => {
+    if (!showLegalTerms) return undefined;
+
+    function closeLegalTerms(event) {
+      if (event.key === "Escape") setShowLegalTerms(false);
+    }
+
+    globalThis.addEventListener("keydown", closeLegalTerms);
+    return () => globalThis.removeEventListener("keydown", closeLegalTerms);
+  }, [showLegalTerms]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -284,6 +472,7 @@ function AuthDialog({
       setShowRecoveryConfirmation(false);
       setRegisterErrors({});
       setLocationError("");
+      setShowLegalTerms(false);
     }
   }, [isOpen]);
 
@@ -300,7 +489,7 @@ function AuthDialog({
       recoveryEmail,
       rememberMe,
       registerForm: {
-        aceptaPrivacidad: registerForm.aceptaPrivacidad,
+        aceptaPromociones: registerForm.aceptaPromociones,
         aceptaTerminos: registerForm.aceptaTerminos,
         departamentoId: registerForm.departamentoId,
         email: registerForm.email,
@@ -318,7 +507,7 @@ function AuthDialog({
     mode,
     recoveryEmail,
     rememberMe,
-    registerForm.aceptaPrivacidad,
+    registerForm.aceptaPromociones,
     registerForm.aceptaTerminos,
     registerForm.departamentoId,
     registerForm.email,
@@ -1338,9 +1527,10 @@ function AuthDialog({
                   </label>
                 </div>
 
-                <label className={getRegisterFieldClass("aceptaTerminos", styles.checkboxField)}>
+                <div className={getRegisterFieldClass("aceptaTerminos", styles.checkboxField)}>
                   <input
                     aria-invalid={Boolean(registerErrors.aceptaTerminos)}
+                    id="register-terms"
                     name="aceptaTerminos"
                     type="checkbox"
                     checked={registerForm.aceptaTerminos}
@@ -1349,26 +1539,35 @@ function AuthDialog({
                     }
                     required
                   />
-                  <span>
-                    Acepto los terminos y condiciones.
+                  <span className={styles.consentCopy}>
+                    <span>
+                      <label htmlFor="register-terms">Acepto los </label>
+                      <button
+                        className={styles.legalLink}
+                        onClick={() => setShowLegalTerms(true)}
+                        type="button"
+                      >
+                        términos y condiciones
+                      </button>
+                      <label htmlFor="register-terms">.</label>
+                    </span>
                     {registerErrors.aceptaTerminos && <small className={styles.fieldError}>{registerErrors.aceptaTerminos}</small>}
                   </span>
-                </label>
+                </div>
 
-                <label className={getRegisterFieldClass("aceptaPrivacidad", styles.checkboxField)}>
+                <label className={styles.checkboxField}>
                   <input
-                    aria-invalid={Boolean(registerErrors.aceptaPrivacidad)}
-                    name="aceptaPrivacidad"
+                    name="aceptaPromociones"
                     type="checkbox"
-                    checked={registerForm.aceptaPrivacidad}
+                    checked={registerForm.aceptaPromociones}
                     onChange={(event) =>
-                      updateRegisterField("aceptaPrivacidad", event.target.checked)
+                      updateRegisterField("aceptaPromociones", event.target.checked)
                     }
-                    required
                   />
-                  <span>
-                    Acepto la politica de privacidad.
-                    {registerErrors.aceptaPrivacidad && <small className={styles.fieldError}>{registerErrors.aceptaPrivacidad}</small>}
+                  <span className={styles.consentCopy}>
+                    Si, acepto recibir promociones, descuentos e informacion comercial
+                    mediante el correo electronico y el numero de telefono proporcionados.
+                    <small>Opcional. Puedes retirar esta autorizacion posteriormente.</small>
                   </span>
                 </label>
 
@@ -1466,6 +1665,10 @@ function AuthDialog({
           </>
         )}
       </section>
+
+      {showLegalTerms ? (
+        <LegalTermsDialog company={empresa} onClose={() => setShowLegalTerms(false)} />
+      ) : null}
     </div>
   );
 }

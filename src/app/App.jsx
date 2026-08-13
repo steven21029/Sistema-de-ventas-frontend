@@ -1622,6 +1622,7 @@ function App() {
 
       <AuthDialog
         canAccessAdminPanel={canAccessAdminPanel}
+        empresa={empresa}
         empresaSlug={empresaSlug}
         isOpen={authOpen}
         isRestoring={isAuthRestoring}

@@ -1946,3 +1946,60 @@ Estado: implementado y verificado en frontend.
 Verificacion:
 
 - `npm run build`: correcto; Vite transformo 1645 modulos.
+
+## 2026-08-13 - Horarios alineados en sucursales
+
+- Cada horario se mantiene al lado de su grupo de dias y los rangos con
+  `a.m.` o `p.m.` ya no se parten internamente.
+- Las tarjetas con imagen reservan espacio solamente en el titulo y la
+  direccion, por lo que el horario aprovecha todo el ancho de la tarjeta.
+- En pantallas pequenas se conserva la distribucion de dia y horario en dos
+  columnas con medidas adaptadas al espacio disponible.
+
+## 2026-08-13 - Titulos uniformes en familias de servicios
+
+- Los nombres de todas las familias usan un tamano fijo menor para evitar que
+  nombres como `Telemedicina` queden recortados dentro de la tarjeta.
+- En telefonos se aplica una medida uniforme mas compacta, manteniendo la misma
+  jerarquia entre todas las tarjetas.
+- Las tarjetas conservan su altura original de `220px`, pero la columna central
+  aprovecha mas ancho al reducir el espacio reservado para la imagen y la
+  accion. Las descripciones admiten tres lineas con espacios internos mas
+  compactos para mostrar mas contenido sin aumentar el grosor de las cards.
+
+## 2026-08-13 - Buscador de productos en perfiles y combos
+
+- El constructor de productos incluidos reemplaza el selector nativo por una
+  busqueda por nombre o codigo.
+- Las coincidencias se muestran en una lista interna con scroll, excluyendo los
+  productos que ya forman parte del paquete.
+- La lista limita el render inicial a 60 resultados e indica cuando hace falta
+  escribir mas caracteres para precisar la busqueda.
+
+## 2026-08-13 - Vigencia de prefacturas en sucursal
+
+- Al seleccionar pago en sucursal se informa que la prefactura tiene una
+  vigencia de 72 horas desde su emision y que el monto se respeta durante ese
+  plazo.
+- La pantalla de pago repite la vigencia junto a la prefactura pendiente.
+- Cuando el backend devuelve `rechazado`, la interfaz comunica que la
+  prefactura ya no esta disponible y oculta las acciones de descarga y reenvio.
+- El cambio automatico del estado por vencimiento corresponde al backend.
+
+## 2026-08-13 - Terminos, privacidad y promociones en el registro
+
+- `Terminos y condiciones` es cliqueable y abre una vista informativa adaptada
+  a escritorio y telefono.
+- El aviso identifica a la empresa actual y explica datos recopilados,
+  finalidades necesarias, proveedores, conservacion, derechos, condiciones de
+  compra, seguridad e informacion sanitaria.
+- La primera casilla sigue siendo obligatoria para crear la cuenta y satisface
+  `acepta_terminos` y `acepta_privacidad`.
+- La segunda casilla autoriza promociones por correo y telefono, es opcional y
+  se envia como `acepta_promociones`.
+- Pendiente de backend: almacenar el consentimiento promocional, su fecha y la
+  version del aviso, y ofrecer un mecanismo autenticado para retirarlo.
+- El contenido incluye deberes de seguridad de la cuenta, desglose y revision
+  de cobros, pagos en linea, vigencia de prefacturas, cargos no reconocidos,
+  devoluciones y limites de responsabilidad compatibles con los derechos del
+  consumidor.

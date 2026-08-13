@@ -335,18 +335,47 @@ function PaymentPage({
             </dl>
 
             {branchPayment ? (
-              <div className={styles.prefacturaNotice}>
+              <div
+                className={`${styles.prefacturaNotice} ${
+                  ["rechazado", "cancelado"].includes(payment.estado)
+                    ? styles.prefacturaNoticeRejected
+                    : ""
+                }`}
+              >
                 <Building2 size={24} aria-hidden="true" />
                 <div>
-                  <strong>Prefactura lista para presentar</strong>
-                  <span>
-                    {paymentContext?.sucursalNombre
-                      ? `Paga en ${paymentContext.sucursalNombre}. `
-                      : ""}
-                    {prefactura?.correo_enviado
-                      ? `Tambien fue enviada a ${prefactura.correo_destino || "tu correo verificado"}.`
-                      : "Puedes solicitar el envio a tu correo verificado."}
-                  </span>
+                  {payment.estado === "pendiente" ? (
+                    <>
+                      <strong>Prefactura vigente por 72 horas</strong>
+                      <span>
+                        Esta prefactura estara disponible durante 72 horas desde su
+                        emision. En ese plazo se respetara el monto total indicado. Si
+                        el pago no se confirma antes del vencimiento, la solicitud sera
+                        rechazada automaticamente.
+                      </span>
+                      <span>
+                        {paymentContext?.sucursalNombre
+                          ? `Presentala en ${paymentContext.sucursalNombre}. `
+                          : ""}
+                        {prefactura?.correo_enviado
+                          ? `Tambien fue enviada a ${prefactura.correo_destino || "tu correo verificado"}.`
+                          : "Puedes solicitar el envio a tu correo verificado."}
+                      </span>
+                    </>
+                  ) : payment.estado === "aprobado" ? (
+                    <>
+                      <strong>Pago registrado en sucursal</strong>
+                      <span>El estado de esta compra fue confirmado por la sucursal.</span>
+                    </>
+                  ) : (
+                    <>
+                      <strong>Prefactura no disponible</strong>
+                      <span>
+                        Esta solicitud ya no puede presentarse para pago. Si deseas
+                        completar la compra, deberas generar un nuevo pedido.
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
             ) : null}
@@ -367,7 +396,7 @@ function PaymentPage({
                   <ExternalLink size={18} aria-hidden="true" />
                 </a>
               )}
-              {branchPayment && pedidoId ? (
+              {branchPayment && payment.estado === "pendiente" && pedidoId ? (
                 <button
                   className={styles.providerButton}
                   disabled={isDownloading}

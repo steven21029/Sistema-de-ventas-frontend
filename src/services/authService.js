@@ -26,7 +26,7 @@ export async function loginUsuario(email, password, recordarme = false) {
 }
 
 export async function registrarComprador({
-  aceptaPrivacidad,
+  aceptaPromociones,
   aceptaTerminos,
   departamentoId,
   email,
@@ -49,7 +49,8 @@ export async function registrarComprador({
     password,
     password_confirmacion: passwordConfirmacion,
     acepta_terminos: aceptaTerminos === true,
-    acepta_privacidad: aceptaPrivacidad === true,
+    acepta_privacidad: aceptaTerminos === true,
+    acepta_promociones: aceptaPromociones === true,
   });
 }
 

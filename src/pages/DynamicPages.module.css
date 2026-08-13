@@ -292,7 +292,8 @@
   padding: 0;
 }
 
-.branchCardWithImage .cardBody {
+.branchCardWithImage .branchTitle,
+.branchCardWithImage .branchAddress {
   padding-right: 170px;
 }
 
@@ -363,7 +364,7 @@
 
 .scheduleRow {
   display: grid;
-  grid-template-columns: minmax(120px, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(145px, max-content) minmax(0, 1fr);
   gap: 12px;
   align-items: baseline;
 }
@@ -376,6 +377,7 @@
 .scheduleRow dd {
   min-width: 0;
   margin: 0;
+  white-space: nowrap;
 }
 
 .mapLink {
@@ -558,7 +560,8 @@
     font-size: 20px;
   }
 
-  .branchCardWithImage .cardBody {
+  .branchCardWithImage .branchTitle,
+  .branchCardWithImage .branchAddress {
     padding-right: 112px;
   }
 
@@ -589,8 +592,9 @@
   }
 
   .scheduleRow {
-    grid-template-columns: 1fr;
-    gap: 2px;
+    grid-template-columns: minmax(110px, max-content) minmax(0, 1fr);
+    gap: 8px;
+    font-size: 14px;
   }
 }
 
@@ -660,7 +664,7 @@
   height: 220px;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(150px, 32%) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(140px, 29%) minmax(0, 1fr) auto;
   align-items: stretch;
   gap: 0;
   padding: 0;
@@ -756,8 +760,8 @@
   min-width: 0;
   display: grid;
   align-content: center;
-  gap: 9px;
-  padding: 26px 26px 24px;
+  gap: 6px;
+  padding: 18px 20px;
 }
 
 .serviceEyebrow {
@@ -773,9 +777,9 @@
   overflow: hidden;
   color: var(--color-blue);
   font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(30px, 2.6vw, 46px);
+  font-size: 34px;
   font-weight: 500;
-  line-height: 0.98;
+  line-height: 1.05;
   letter-spacing: 0;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -786,17 +790,17 @@
   max-width: 48ch;
   overflow: hidden;
   color: var(--color-muted);
-  font-size: 15px;
-  line-height: 1.45;
+  font-size: 14px;
+  line-height: 1.4;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
 }
 
 .serviceStats {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 7px;
+  margin-top: 3px;
 }
 
 .serviceStats span {
@@ -817,8 +821,8 @@
   align-content: center;
   justify-items: end;
   gap: 14px;
-  min-width: 170px;
-  padding: 24px 24px 24px 0;
+  min-width: 145px;
+  padding: 18px 18px 18px 0;
 }
 
 .serviceCallToAction {
@@ -1175,7 +1179,7 @@
   }
 
   .serviceAccordionText strong {
-    font-size: 30px;
+    font-size: 27px;
   }
 
   .serviceAccordionPanel {

@@ -92,6 +92,12 @@ function normalizeValue(value) {
   return String(value || "").trim().toLowerCase();
 }
 
+function normalizeSearchValue(value) {
+  return normalizeValue(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
 function canCancelPendingOrder(config, item) {
   return config.key === "pedidos" && normalizeValue(item?.estado_pago) === "pendiente";
 }
@@ -328,8 +334,20 @@ function OptionChecklist({ field, options, value, onChange }) {
 }
 
 function ProductBuilder({ options, value, onChange }) {
+  const [query, setQuery] = useState("");
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
   const selected = value || [];
   const selectedIds = new Set(selected.map((item) => Number(item.producto_id)));
+  const normalizedQuery = normalizeSearchValue(query);
+  const availableOptions = options.filter(
+    (option) => !selectedIds.has(Number(option.id)),
+  );
+  const matchingOptions = availableOptions.filter((option) =>
+    normalizeSearchValue(
+      `${option.nombre || ""} ${option.codigo || ""} ${option.codigo_interno || ""}`,
+    ).includes(normalizedQuery),
+  );
+  const visibleOptions = matchingOptions.slice(0, 60);
 
   function addProduct(productId) {
     if (!productId || selectedIds.has(Number(productId))) return;
@@ -337,16 +355,82 @@ function ProductBuilder({ options, value, onChange }) {
       ...selected,
       { producto_id: Number(productId), cantidad: 1, orden: selected.length + 1 },
     ]);
+    setQuery("");
+    setIsPickerOpen(false);
   }
 
   return (
     <div className={styles.productBuilder}>
-      <select aria-label="Agregar producto" onChange={(event) => { addProduct(event.target.value); event.target.value = ""; }} defaultValue="">
-        <option value="">Agregar un producto...</option>
-        {options.filter((option) => !selectedIds.has(Number(option.id))).map((option) => (
-          <option key={option.id} value={option.id}>{option.nombre} ({option.codigo})</option>
-        ))}
-      </select>
+      <div
+        className={styles.productBuilderPicker}
+        onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) {
+            setIsPickerOpen(false);
+          }
+        }}
+      >
+        <div className={styles.productBuilderSearch}>
+          <Search size={16} aria-hidden="true" />
+          <input
+            aria-expanded={isPickerOpen}
+            aria-haspopup="listbox"
+            aria-label="Buscar producto para agregar"
+            autoComplete="off"
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setIsPickerOpen(true);
+            }}
+            onFocus={() => setIsPickerOpen(true)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                setIsPickerOpen(false);
+                event.currentTarget.blur();
+              }
+            }}
+            placeholder="Buscar producto por nombre o codigo"
+            role="combobox"
+            type="search"
+            value={query}
+          />
+        </div>
+
+        {isPickerOpen ? (
+          <div className={styles.productBuilderResults} role="listbox">
+            {visibleOptions.map((option) => (
+              <button
+                className={styles.productBuilderOption}
+                key={option.id}
+                onClick={() => addProduct(option.id)}
+                aria-selected="false"
+                role="option"
+                type="button"
+              >
+                <strong>{option.nombre}</strong>
+                <small>
+                  {option.codigo || option.codigo_interno || "Sin codigo"}
+                  {option.categoria_nombre ? ` - ${option.categoria_nombre}` : ""}
+                </small>
+              </button>
+            ))}
+
+            {matchingOptions.length === 0 ? (
+              <p className={styles.emptyPicker}>
+                {availableOptions.length === 0
+                  ? "Todos los productos ya fueron agregados."
+                  : "No hay productos que coincidan con la busqueda."}
+              </p>
+            ) : null}
+
+            {matchingOptions.length > visibleOptions.length ? (
+              <small className={styles.productBuilderResultMeta}>
+                Mostrando {visibleOptions.length} de {matchingOptions.length}. Escribe
+                mas letras para precisar la busqueda.
+              </small>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+
       <div className={styles.productBuilderRows}>
         {selected.map((item, index) => {
           const product = options.find((option) => Number(option.id) === Number(item.producto_id));

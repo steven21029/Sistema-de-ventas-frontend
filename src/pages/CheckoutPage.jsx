@@ -1,6 +1,7 @@
 import {
   ArrowLeft,
   Building2,
+  Clock3,
   CreditCard,
   Mail,
   MapPin,
@@ -576,6 +577,18 @@ function CheckoutPage({
                 {selectedBranch?.direccion ? (
                   <span><MapPin size={16} aria-hidden="true" />{selectedBranch.direccion}</span>
                 ) : null}
+                <div className={styles.prefacturaValidity} role="note">
+                  <Clock3 size={18} aria-hidden="true" />
+                  <div>
+                    <strong>Vigencia de 72 horas</strong>
+                    <span>
+                      Esta prefactura sera valida durante 72 horas a partir de su
+                      emision. Durante ese plazo se respetara el monto total indicado.
+                      Si el pago no se confirma en la sucursal seleccionada antes del
+                      vencimiento, la solicitud sera rechazada automaticamente.
+                    </span>
+                  </div>
+                </div>
                 <span>
                   <Mail size={16} aria-hidden="true" />
                   La prefactura sera enviada al correo verificado de tu cuenta.
