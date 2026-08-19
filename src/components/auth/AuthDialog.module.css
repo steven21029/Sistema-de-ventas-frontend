@@ -472,6 +472,62 @@
   line-height: 1.55;
 }
 
+.legalStatus,
+.legalStatusError {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border-left: 4px solid var(--color-blue);
+  color: var(--color-ink);
+  background: var(--color-surface-soft);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.legalStatusError {
+  justify-content: space-between;
+  border-left-color: var(--color-red-dark);
+  background: rgba(209, 57, 61, 0.08);
+}
+
+.legalStatusError button {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border: 1px solid var(--color-red-dark);
+  border-radius: var(--radius-sm);
+  color: var(--color-red-dark);
+  background: white;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.legalServerContent {
+  margin-top: 18px;
+  white-space: pre-line;
+}
+
+.legalServerContent > p,
+.legalServerContent section {
+  margin: 0;
+  padding: 14px 0;
+  border-top: 1px solid var(--color-line);
+}
+
+.legalServerContent h3 {
+  margin: 0 0 6px;
+  color: var(--color-blue);
+  font-size: 15px;
+}
+
+.legalServerContent p {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
 .legalSections {
   margin-top: 18px;
 }
@@ -553,6 +609,135 @@
 .sessionInfo span {
   color: var(--color-muted);
   font-size: 14px;
+}
+
+.communicationPanel {
+  display: grid;
+  gap: 13px;
+  padding: 15px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: white;
+}
+
+.communicationHeading {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--color-blue);
+}
+
+.communicationHeading > svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.communicationHeading div {
+  display: grid;
+  gap: 3px;
+}
+
+.communicationHeading span,
+.communicationPanel > p {
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.communicationPanel > p {
+  margin: 0;
+}
+
+.preferenceSwitch {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: fit-content;
+  cursor: pointer;
+  color: var(--color-blue);
+  font-size: 13px;
+}
+
+.preferenceSwitch input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.preferenceSwitch > span {
+  position: relative;
+  width: 42px;
+  height: 24px;
+  flex: 0 0 42px;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  background: #d7dce3;
+  transition: background-color 160ms ease;
+}
+
+.preferenceSwitch > span::after {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.28);
+  content: "";
+  transition: transform 160ms ease;
+}
+
+.preferenceSwitch input:checked + span {
+  border-color: var(--color-red-dark);
+  background: var(--color-red-dark);
+}
+
+.preferenceSwitch input:checked + span::after {
+  transform: translateX(18px);
+}
+
+.preferenceSwitch input:focus-visible + span {
+  outline: 2px solid var(--color-blue);
+  outline-offset: 2px;
+}
+
+.preferenceSwitch input:disabled + span,
+.preferenceSwitch input:disabled ~ strong {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.preferenceSaveButton {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 13px;
+  border: 1px solid var(--color-blue);
+  border-radius: var(--radius-sm);
+  color: white;
+  background: var(--color-blue);
+  font-weight: 900;
+}
+
+.preferenceSaveButton:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.spin {
+  animation: spin 800ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .logoutButton {

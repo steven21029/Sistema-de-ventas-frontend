@@ -1,0 +1,19 @@
+name: sistema-ventas-frontend
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-/api/v1}
+        VITE_EMPRESA_SLUG: ${VITE_EMPRESA_SLUG:-}
+    environment:
+      BACKEND_URL: ${BACKEND_URL:-http://host.docker.internal:8000}
+      BACKEND_HOST: ${BACKEND_HOST:-127.0.0.1:8000}
+      NGINX_ENVSUBST_FILTER: "BACKEND_URL|BACKEND_HOST"
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped

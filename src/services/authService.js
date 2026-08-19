@@ -1,5 +1,6 @@
 import {
   apiGet,
+  apiPatch,
   apiPost,
   apiPostWithMeta,
   hasApiAccessToken,
@@ -48,10 +49,33 @@ export async function registrarComprador({
     municipio_id: Number(municipioId),
     password,
     password_confirmacion: passwordConfirmacion,
-    acepta_terminos: aceptaTerminos === true,
-    acepta_privacidad: aceptaTerminos === true,
+    acepta_terminos_privacidad: aceptaTerminos === true,
     acepta_promociones: aceptaPromociones === true,
   });
+}
+
+export async function getAvisoLegal(empresaSlug) {
+  return apiGet("/usuarios/aviso-legal/", {
+    empresa_slug: empresaSlug,
+  });
+}
+
+export async function getPreferenciasComunicacion() {
+  return apiGet("/usuarios/preferencias-comunicacion/", undefined, {
+    auth: true,
+  });
+}
+
+export async function actualizarPreferenciasComunicacion(aceptaPromociones) {
+  return apiPatch(
+    "/usuarios/preferencias-comunicacion/",
+    {
+      acepta_promociones: aceptaPromociones === true,
+    },
+    {
+      auth: true,
+    },
+  );
 }
 
 export async function verificarCorreo(email, codigo) {

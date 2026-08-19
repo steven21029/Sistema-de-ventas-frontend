@@ -18,6 +18,7 @@ import { generarPedidoDesdeCarrito } from "../services/pedidoService";
 import { getApiErrorMessage } from "../utils/apiError";
 import { formatMoney, toNumber } from "../utils/money";
 import { normalizePhone, PHONE_LENGTH, PHONE_PATTERN } from "../utils/phone";
+import { getVisibleBranchName, groupBranchesByCity } from "../utils/branches";
 import {
   clearCheckoutDraft,
   clearPendingOrder,
@@ -198,6 +199,7 @@ function CheckoutPage({
     () => (pendingOrder ? getOrderItems(pendingOrder) : items),
     [items, pendingOrder],
   );
+  const branchGroups = useMemo(() => groupBranchesByCity(branches), [branches]);
   const displayTotals = pendingOrder
     ? {
         discount: toNumber(pendingOrder.descuento_total),
@@ -284,7 +286,8 @@ function CheckoutPage({
           pedidoNumero: branchPayment.pedido?.numero || order.numero,
           prefactura: branchPayment.prefactura,
           sucursalId: Number(selectedBranchId),
-          sucursalNombre: selectedBranch?.nombre || "Sucursal seleccionada",
+          sucursalNombre:
+            getVisibleBranchName(selectedBranch?.nombre) || "Sucursal seleccionada",
         });
       } else {
         payment = await iniciarPago(order.id);
@@ -568,8 +571,14 @@ function CheckoutPage({
                     <option value="">
                       {branchesLoading ? "Cargando sucursales..." : "Selecciona una sucursal"}
                     </option>
-                    {branches.map((branch) => (
-                      <option key={branch.id} value={branch.id}>{branch.nombre}</option>
+                    {branchGroups.map((group) => (
+                      <optgroup key={group.key} label={group.label}>
+                        {group.items.map((branch) => (
+                          <option key={branch.id} value={branch.id}>
+                            {getVisibleBranchName(branch.nombre) || branch.nombre}
+                          </option>
+                        ))}
+                      </optgroup>
                     ))}
                   </select>
                 </label>

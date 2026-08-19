@@ -5,11 +5,14 @@ import {
   IdCard,
   KeyRound,
   LayoutDashboard,
+  LoaderCircle,
   LockKeyhole,
   LogOut,
   Mail,
   MapPin,
+  Megaphone,
   Phone,
+  Save,
   ShieldCheck,
   UserRound,
   UserPlus,
@@ -20,6 +23,11 @@ import {
   getActiveDepartments,
   getActiveMunicipalities,
 } from "../../services/locationService";
+import {
+  actualizarPreferenciasComunicacion,
+  getAvisoLegal,
+  getPreferenciasComunicacion,
+} from "../../services/authService";
 import { getApiErrorMessage } from "../../utils/apiError";
 import { clearAuthFlow, getAuthFlow, saveAuthFlow } from "../../utils/authFlow";
 import { normalizePhone, PHONE_LENGTH, PHONE_PATTERN } from "../../utils/phone";
@@ -59,6 +67,7 @@ const REGISTER_API_FIELDS = {
   acepta_privacidad: "aceptaTerminos",
   acepta_promociones: "aceptaPromociones",
   acepta_terminos: "aceptaTerminos",
+  acepta_terminos_privacidad: "aceptaTerminos",
   departamento_id: "departamentoId",
   email: "email",
   municipio_id: "municipioId",
@@ -196,6 +205,104 @@ function getResponseMessage(response, fallback) {
   );
 }
 
+function getPreferenceData(response) {
+  return response?.preferencias || response?.data || response || {};
+}
+
+function getLegalNoticeData(response) {
+  const noticeCandidates = [response?.aviso_legal, response?.aviso, response?.data, response];
+  const notice = noticeCandidates.find(
+    (candidate) => candidate && typeof candidate === "object" && !Array.isArray(candidate),
+  );
+
+  return notice || null;
+}
+
+function getLegalNoticeSections(notice) {
+  if (!notice) return [];
+
+  if (Array.isArray(notice.secciones)) {
+    return notice.secciones
+      .map((section, index) => {
+        if (typeof section === "string") {
+          return { title: `Seccion ${index + 1}`, text: section.trim() };
+        }
+
+        return {
+          title:
+            section?.titulo || section?.nombre || section?.encabezado ||
+            `Seccion ${index + 1}`,
+          text:
+            section?.contenido || section?.texto || section?.descripcion || "",
+        };
+      })
+      .filter((section) => section.text);
+  }
+
+  if (notice.secciones && typeof notice.secciones === "object") {
+    return Object.entries(notice.secciones)
+      .map(([title, text]) => ({ title, text: typeof text === "string" ? text : "" }))
+      .filter((section) => section.text);
+  }
+
+  return [
+    {
+      title: "Terminos y condiciones",
+      text:
+        notice.terminos_condiciones || notice.contenido_terminos ||
+        notice.texto_terminos || notice.terminos || "",
+    },
+    {
+      title: "Privacidad",
+      text:
+        notice.politica_privacidad || notice.contenido_privacidad ||
+        notice.texto_privacidad || notice.privacidad || "",
+    },
+    {
+      title: "Promociones opcionales",
+      text:
+        notice.contenido_promociones || notice.texto_promociones ||
+        notice.promociones || "",
+    },
+  ].filter((section) => typeof section.text === "string" && section.text.trim());
+}
+
+function getLegalNoticeText(notice) {
+  const candidates = [
+    notice?.contenido,
+    notice?.contenido_legal,
+    notice?.contenido_terminos_privacidad,
+    notice?.texto,
+    notice?.texto_aviso,
+    notice?.texto_legal,
+    notice?.texto_terminos_privacidad,
+    notice?.terminos_privacidad,
+    typeof notice?.aviso_legal === "string" ? notice.aviso_legal : "",
+    typeof notice?.aviso === "string" ? notice.aviso : "",
+    notice?.resumen,
+    notice?.descripcion,
+  ];
+
+  return candidates.find((value) => typeof value === "string" && value.trim()) || "";
+}
+
+function getLegalNoticeVersion(notice) {
+  const combined =
+    notice?.version_terminos_privacidad || notice?.version_aviso || notice?.version;
+  if (combined) return `Version ${combined}`;
+
+  const versions = [
+    notice?.version_terminos || notice?.version_terminos_actual
+      ? `Terminos ${notice.version_terminos || notice.version_terminos_actual}`
+      : "",
+    notice?.version_privacidad || notice?.version_privacidad_actual
+      ? `Privacidad ${notice.version_privacidad || notice.version_privacidad_actual}`
+      : "",
+  ].filter(Boolean);
+
+  return versions.length ? `Version: ${versions.join(" | ")}` : "";
+}
+
 function PasswordVisibilityButton({ isVisible, onToggle }) {
   const Icon = isVisible ? EyeOff : Eye;
   const label = isVisible ? "Ocultar contraseña" : "Mostrar contraseña";
@@ -213,11 +320,17 @@ function PasswordVisibilityButton({ isVisible, onToggle }) {
   );
 }
 
-function LegalTermsDialog({ company, onClose }) {
+function LegalTermsDialog({ company, error, isLoading, notice, onClose, onRetry }) {
   const companyName = company?.nombre || "la empresa responsable de esta tienda";
   const contactText = company?.correo
     ? `escribiendo a ${company.correo}`
     : "mediante los canales publicados en la seccion de Contacto";
+
+  const noticeSections = getLegalNoticeSections(notice);
+  const noticeText = getLegalNoticeText(notice);
+  const noticeTitle =
+    notice?.titulo || notice?.encabezado || notice?.nombre || "Terminos y condiciones";
+  const noticeVersion = getLegalNoticeVersion(notice);
 
   return (
     <div className={styles.legalLayer}>
@@ -236,7 +349,7 @@ function LegalTermsDialog({ company, onClose }) {
         <header className={styles.legalHeader}>
           <div>
             <p>Registro y privacidad</p>
-            <h2 id="legal-terms-title">Terminos y condiciones</h2>
+            <h2 id="legal-terms-title">{noticeTitle}</h2>
           </div>
           <button aria-label="Cerrar" onClick={onClose} title="Cerrar" type="button">
             <X size={19} aria-hidden="true" />
@@ -244,7 +357,21 @@ function LegalTermsDialog({ company, onClose }) {
         </header>
 
         <div className={styles.legalBody}>
-          <p className={styles.legalUpdated}>Ultima actualizacion: 13 de agosto de 2026.</p>
+          {isLoading ? (
+            <div className={styles.legalStatus} role="status">
+              <LoaderCircle className={styles.spin} size={18} aria-hidden="true" />
+              Cargando aviso legal vigente
+            </div>
+          ) : null}
+          {error ? (
+            <div className={styles.legalStatusError} role="alert">
+              <span>{error}</span>
+              <button onClick={onRetry} type="button">Reintentar</button>
+            </div>
+          ) : null}
+          <p className={styles.legalUpdated}>
+            {noticeVersion || "Ultima actualizacion: 13 de agosto de 2026."}
+          </p>
           <p className={styles.legalIntro}>
             El responsable de esta tienda es {companyName}
             {company?.direccion ? `, con domicilio en ${company.direccion}` : ""}.
@@ -253,6 +380,19 @@ function LegalTermsDialog({ company, onClose }) {
             puedes comunicarte {contactText}.
           </p>
 
+          {noticeText || noticeSections.length ? (
+            <div className={styles.legalServerContent}>
+              {noticeText ? <p>{noticeText}</p> : null}
+              {noticeSections.map((section, index) => (
+                <section key={`${section.title}-${index}`}>
+                  <h3>{section.title}</h3>
+                  <p>{section.text}</p>
+                </section>
+              ))}
+            </div>
+          ) : null}
+
+          {!noticeText && noticeSections.length === 0 ? (
           <div className={styles.legalSections}>
             <section>
               <h3>1. Datos recopilados</h3>
@@ -381,6 +521,7 @@ function LegalTermsDialog({ company, onClose }) {
               </p>
             </section>
           </div>
+          ) : null}
         </div>
 
         <footer className={styles.legalFooter}>
@@ -440,6 +581,15 @@ function AuthDialog({
   const [showRecoveryPassword, setShowRecoveryPassword] = useState(false);
   const [showRecoveryConfirmation, setShowRecoveryConfirmation] = useState(false);
   const [showLegalTerms, setShowLegalTerms] = useState(false);
+  const [legalNotice, setLegalNotice] = useState(null);
+  const [legalNoticeError, setLegalNoticeError] = useState("");
+  const [legalNoticeRequest, setLegalNoticeRequest] = useState(0);
+  const [isLoadingLegalNotice, setIsLoadingLegalNotice] = useState(false);
+  const [acceptsPromotions, setAcceptsPromotions] = useState(false);
+  const [savedAcceptsPromotions, setSavedAcceptsPromotions] = useState(false);
+  const [hasLoadedPreferences, setHasLoadedPreferences] = useState(false);
+  const [isLoadingPreferences, setIsLoadingPreferences] = useState(false);
+  const [isSavingPreferences, setIsSavingPreferences] = useState(false);
 
   useEffect(() => {
     if (!showLegalTerms) return undefined;
@@ -451,6 +601,71 @@ function AuthDialog({
     globalThis.addEventListener("keydown", closeLegalTerms);
     return () => globalThis.removeEventListener("keydown", closeLegalTerms);
   }, [showLegalTerms]);
+
+  useEffect(() => {
+    if (!showLegalTerms || !empresaSlug) return undefined;
+
+    let isActive = true;
+    setIsLoadingLegalNotice(true);
+    setLegalNoticeError("");
+
+    getAvisoLegal(empresaSlug)
+      .then((response) => {
+        if (isActive) setLegalNotice(getLegalNoticeData(response));
+      })
+      .catch((error) => {
+        if (isActive) {
+          setLegalNoticeError(
+            getApiErrorMessage(
+              error,
+              "No se pudo actualizar el aviso legal. Se muestra la copia disponible.",
+            ),
+          );
+        }
+      })
+      .finally(() => {
+        if (isActive) setIsLoadingLegalNotice(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [empresaSlug, legalNoticeRequest, showLegalTerms]);
+
+  useEffect(() => {
+    if (!isOpen || !session) return undefined;
+
+    let isActive = true;
+    setIsLoadingPreferences(true);
+    setHasLoadedPreferences(false);
+
+    getPreferenciasComunicacion()
+      .then((response) => {
+        if (!isActive) return;
+        const preference = getPreferenceData(response).acepta_promociones === true;
+        setAcceptsPromotions(preference);
+        setSavedAcceptsPromotions(preference);
+        setHasLoadedPreferences(true);
+      })
+      .catch((error) => {
+        if (isActive) {
+          setFeedback({
+            message: getApiErrorMessage(
+              error,
+              "No se pudo cargar tu preferencia de comunicaciones.",
+            ),
+            type: "error",
+          });
+        }
+      })
+      .finally(() => {
+        if (isActive) setIsLoadingPreferences(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [isOpen, session]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -957,6 +1172,42 @@ function AuthDialog({
     }
   }
 
+  async function handleSaveCommunicationPreference() {
+    setFeedback(EMPTY_FEEDBACK);
+    setIsSavingPreferences(true);
+
+    try {
+      const response = await actualizarPreferenciasComunicacion(acceptsPromotions);
+      const responseData = getPreferenceData(response);
+      const savedPreference =
+        typeof responseData.acepta_promociones === "boolean"
+          ? responseData.acepta_promociones
+          : acceptsPromotions;
+
+      setAcceptsPromotions(savedPreference);
+      setSavedAcceptsPromotions(savedPreference);
+      setFeedback({
+        message: getResponseMessage(
+          response,
+          savedPreference
+            ? "Preferencia guardada. Podras recibir promociones y descuentos."
+            : "Preferencia guardada. No recibiras comunicaciones promocionales.",
+        ),
+        type: "success",
+      });
+    } catch (error) {
+      setFeedback({
+        message: getApiErrorMessage(
+          error,
+          "No se pudo actualizar tu preferencia de comunicaciones.",
+        ),
+        type: "error",
+      });
+    } finally {
+      setIsSavingPreferences(false);
+    }
+  }
+
   const userName = getUserName(session);
   const userInitial = userName.charAt(0).toUpperCase();
   const formTitle = {
@@ -1031,6 +1282,65 @@ function AuthDialog({
                 </span>
               </div>
             </div>
+
+            <section className={styles.communicationPanel}>
+              <div className={styles.communicationHeading}>
+                <Megaphone size={20} aria-hidden="true" />
+                <div>
+                  <strong>Comunicaciones promocionales</strong>
+                  <span>Promociones, descuentos e informacion comercial.</span>
+                </div>
+              </div>
+
+              <label className={styles.preferenceSwitch}>
+                <input
+                  checked={acceptsPromotions}
+                  disabled={
+                    !hasLoadedPreferences || isLoadingPreferences || isSavingPreferences
+                  }
+                  onChange={(event) => setAcceptsPromotions(event.target.checked)}
+                  type="checkbox"
+                />
+                <span aria-hidden="true" />
+                <strong>
+                  {isLoadingPreferences
+                    ? "Consultando"
+                    : hasLoadedPreferences
+                      ? acceptsPromotions
+                        ? "Aceptadas"
+                        : "Desactivadas"
+                      : "No disponible"}
+                </strong>
+              </label>
+
+              <p>
+                Los codigos de seguridad, la recuperacion de cuenta y las prefacturas
+                seguiran llegando aunque desactives esta opcion.
+              </p>
+
+              <button
+                className={styles.preferenceSaveButton}
+                disabled={
+                  isLoadingPreferences ||
+                  isSavingPreferences ||
+                  !hasLoadedPreferences ||
+                  acceptsPromotions === savedAcceptsPromotions
+                }
+                onClick={handleSaveCommunicationPreference}
+                type="button"
+              >
+                {isSavingPreferences ? (
+                  <LoaderCircle className={styles.spin} size={17} aria-hidden="true" />
+                ) : (
+                  <Save size={17} aria-hidden="true" />
+                )}
+                {isLoadingPreferences
+                  ? "Cargando preferencia"
+                  : isSavingPreferences
+                    ? "Guardando"
+                    : "Guardar preferencia"}
+              </button>
+            </section>
 
             {feedback.message && (
               <div className={getFeedbackClass(feedback)} role="alert">
@@ -1667,7 +1977,14 @@ function AuthDialog({
       </section>
 
       {showLegalTerms ? (
-        <LegalTermsDialog company={empresa} onClose={() => setShowLegalTerms(false)} />
+        <LegalTermsDialog
+          company={empresa}
+          error={legalNoticeError}
+          isLoading={isLoadingLegalNotice}
+          notice={legalNotice}
+          onClose={() => setShowLegalTerms(false)}
+          onRetry={() => setLegalNoticeRequest((current) => current + 1)}
+        />
       ) : null}
     </div>
   );

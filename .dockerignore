@@ -1,14 +1,15 @@
-node_modules/
-dist/
-.vite/
-.npm-cache/
+.git
+.gitignore
+.agents
+.npm-cache
+.vite
+dist
+node_modules
+
 .env
 .env.*
 !.env.example
 README.md
-
-.agents/
-skills-lock.json
 
 *.local
 *.log
